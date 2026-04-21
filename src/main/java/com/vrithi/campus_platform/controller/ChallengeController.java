@@ -3,6 +3,7 @@ package com.vrithi.campus_platform.controller;
 import com.vrithi.campus_platform.dto.ChallengeRequest;
 import com.vrithi.campus_platform.dto.ChallengeResponse;
 import com.vrithi.campus_platform.service.ChallengeService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,7 +21,7 @@ public class ChallengeController {
 
     @PostMapping
     public ResponseEntity<ChallengeResponse> create(
-            @RequestBody ChallengeRequest request,
+            @Valid @RequestBody ChallengeRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
                 challengeService.createChallenge(request, userDetails.getUsername()));
@@ -39,7 +40,7 @@ public class ChallengeController {
     @PutMapping("/{id}")
     public ResponseEntity<ChallengeResponse> update(
             @PathVariable Long id,
-            @RequestBody ChallengeRequest request,
+            @Valid @RequestBody ChallengeRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
                 challengeService.updateChallenge(id, request, userDetails.getUsername()));

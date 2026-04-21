@@ -2,6 +2,7 @@ package com.vrithi.campus_platform.controller;
 
 import com.vrithi.campus_platform.dto.*;
 import com.vrithi.campus_platform.service.HelpService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,7 +20,7 @@ public class HelpController {
 
     @PostMapping("/posts")
     public ResponseEntity<HelpPostResponse> createPost(
-            @RequestBody HelpPostRequest request,
+            @Valid @RequestBody HelpPostRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
                 helpService.createPost(request, userDetails.getUsername()));
@@ -38,7 +39,7 @@ public class HelpController {
     @PostMapping("/posts/{postId}/replies")
     public ResponseEntity<HelpReplyResponse> reply(
             @PathVariable Long postId,
-            @RequestBody HelpReplyRequest request,
+            @Valid @RequestBody HelpReplyRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
                 helpService.replyToPost(postId, request, userDetails.getUsername()));

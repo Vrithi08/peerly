@@ -6,6 +6,7 @@ import com.vrithi.campus_platform.dto.RegisterRequest;
 import com.vrithi.campus_platform.entity.User;
 import com.vrithi.campus_platform.repository.UserRepository;
 import com.vrithi.campus_platform.security.JwtUtil;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,7 +35,7 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         // Validate Amrita email domain
         if (!request.getEmail().endsWith("@cb.students.amrita.edu")) {
             return ResponseEntity.badRequest()
@@ -66,7 +67,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(), request.getPassword())
