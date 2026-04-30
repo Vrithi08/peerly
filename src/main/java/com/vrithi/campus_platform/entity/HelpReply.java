@@ -1,12 +1,10 @@
 package com.vrithi.campus_platform.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "help_replies")
-@Data
 public class HelpReply {
 
     @Id
@@ -29,4 +27,20 @@ public class HelpReply {
     private boolean accepted = false;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public HelpPost getHelpPost() { return helpPost; }
+    public void setHelpPost(HelpPost helpPost) { this.helpPost = helpPost; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+    public String getMediaUrl() { return mediaUrl; }
+    public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
+    public boolean isAccepted() { return accepted; }
+    public void setAccepted(boolean accepted) { this.accepted = accepted; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

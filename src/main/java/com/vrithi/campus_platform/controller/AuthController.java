@@ -36,26 +36,23 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        // Validate Amrita email domain
-        if (!request.getEmail().endsWith("@cb.students.amrita.edu")) {
-            return ResponseEntity.badRequest()
-                    .body("Only Amrita Vishwa Vidyapeetham, Coimbatore student emails are allowed");
-        }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest().body("Email already in use");
         }
 
-        // Parse email for student details
+        // Parse email for student details (will fail gracefully for non-Amrita emails)
         Map<String, String> emailData = emailParserService.parseAmritaEmail(request.getEmail());
 
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setCollege("Amrita Vishwa Vidyapeetham, Coimbatore");
+        
+        // Use the college provided in the request
+        user.setCollege(request.getCollege());
 
-        // Auto-fill from email
+        // Auto-fill from email (if applicable)
         user.setDepartment(emailData.getOrDefault("department", "Unknown"));
         user.setBatch(emailData.getOrDefault("batch", "Unknown"));
         user.setSection(emailData.getOrDefault("section", "Unknown"));

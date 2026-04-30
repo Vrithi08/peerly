@@ -131,4 +131,18 @@ public class LeaderboardService {
         return profile;
     }
 
+    public UserProfileResponse updateProfile(String email, UserProfileResponse request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (request.getName() != null) user.setName(request.getName());
+        if (request.getBio() != null) user.setBio(request.getBio());
+        if (request.getDepartment() != null) user.setDepartment(request.getDepartment());
+        if (request.getBatch() != null) user.setBatch(request.getBatch());
+        if (request.getGithubUrl() != null) user.setGithubUrl(request.getGithubUrl());
+        if (request.getLinkedinUrl() != null) user.setLinkedinUrl(request.getLinkedinUrl());
+        
+        userRepository.save(user);
+        return buildProfile(user);
+    }
 }

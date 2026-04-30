@@ -5,6 +5,7 @@ import com.vrithi.campus_platform.dto.ChallengeResponse;
 import com.vrithi.campus_platform.entity.Challenge;
 import com.vrithi.campus_platform.entity.User;
 import com.vrithi.campus_platform.repository.ChallengeRepository;
+import com.vrithi.campus_platform.repository.SubmissionRepository;
 import com.vrithi.campus_platform.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,9 @@ public class ChallengeService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SubmissionRepository submissionRepository;
 
     // Create a new challenge
     public ChallengeResponse createChallenge(ChallengeRequest request, String email) {
@@ -96,6 +100,7 @@ public class ChallengeService {
         response.setSubmissionDeadline(challenge.getSubmissionDeadline());
         response.setVotingDeadline(challenge.getVotingDeadline());
         response.setCreatedAt(challenge.getCreatedAt());
+        response.setParticipantsCount((int) submissionRepository.countByChallengeId(challenge.getId()));
         return response;
     }
 }

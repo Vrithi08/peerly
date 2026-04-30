@@ -28,7 +28,7 @@ public class HelpController {
 
     @GetMapping("/posts")
     public ResponseEntity<List<HelpPostResponse>> getAllPosts() {
-        return ResponseEntity.ok(helpService.getAllOpenPosts());
+        return ResponseEntity.ok(helpService.getAllPosts());
     }
 
     @GetMapping("/posts/{id}")
@@ -57,5 +57,13 @@ public class HelpController {
     public ResponseEntity<List<HelpPostResponse>> search(
             @RequestParam String subject) {
         return ResponseEntity.ok(helpService.searchBySubject(subject));
+    }
+
+    @PostMapping("/posts/{id}/delete")
+    public ResponseEntity<Void> deletePost(
+            @PathVariable Long id, 
+            @AuthenticationPrincipal UserDetails userDetails) {
+        helpService.deletePost(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 }

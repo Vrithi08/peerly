@@ -2,9 +2,7 @@ package com.vrithi.campus_platform.dto;
 
 import com.vrithi.campus_platform.entity.Urgency;
 import jakarta.validation.constraints.*;
-import lombok.Data;
 
-@Data
 public class HelpPostRequest {
 
     @NotBlank(message = "Subject is required")
@@ -18,4 +16,14 @@ public class HelpPostRequest {
     private String description;
 
     private Urgency urgency;
+
+    // Getters and Setters
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+    public String getTopic() { return topic; }
+    public void setTopic(String topic) { this.topic = topic; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public Urgency getUrgency() { return urgency; }
+    public void setUrgency(Urgency urgency) { this.urgency = urgency; }
 }

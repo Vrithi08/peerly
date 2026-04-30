@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface HelpPostRepository extends JpaRepository<HelpPost, Long> {
     List<HelpPost> findByResolvedFalseOrderByUrgencyDesc();
+    List<HelpPost> findAllByOrderByResolvedAscUrgencyDescCreatedAtDesc();
     List<HelpPost> findBySubjectContainingIgnoreCase(String subject);
     List<HelpPost> findByUserId(Long userId);
     @Query("SELECT h.subject, COUNT(h) FROM HelpPost h GROUP BY h.subject ORDER BY COUNT(h) DESC")

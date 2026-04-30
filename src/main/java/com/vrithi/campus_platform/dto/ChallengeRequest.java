@@ -2,10 +2,8 @@ package com.vrithi.campus_platform.dto;
 
 import com.vrithi.campus_platform.entity.ChallengeCategory;
 import jakarta.validation.constraints.*;
-import lombok.Data;
 import java.time.LocalDateTime;
 
-@Data
 public class ChallengeRequest {
 
     @NotBlank(message = "Title is required")
@@ -25,4 +23,16 @@ public class ChallengeRequest {
     @NotNull(message = "Voting deadline is required")
     @Future(message = "Voting deadline must be in the future")
     private LocalDateTime votingDeadline;
+
+    // Getters and Setters
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public ChallengeCategory getCategory() { return category; }
+    public void setCategory(ChallengeCategory category) { this.category = category; }
+    public LocalDateTime getSubmissionDeadline() { return submissionDeadline; }
+    public void setSubmissionDeadline(LocalDateTime submissionDeadline) { this.submissionDeadline = submissionDeadline; }
+    public LocalDateTime getVotingDeadline() { return votingDeadline; }
+    public void setVotingDeadline(LocalDateTime votingDeadline) { this.votingDeadline = votingDeadline; }
 }

@@ -1,7 +1,6 @@
 package com.vrithi.campus_platform.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
@@ -10,7 +9,6 @@ import java.time.LocalDateTime;
                 columnNames = {"challenge_id", "voter_id"}
         )
 )
-@Data
 public class Vote {
 
     @Id
@@ -30,4 +28,16 @@ public class Vote {
     private Submission submission;
 
     private LocalDateTime votedAt = LocalDateTime.now();
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Challenge getChallenge() { return challenge; }
+    public void setChallenge(Challenge challenge) { this.challenge = challenge; }
+    public User getVoter() { return voter; }
+    public void setVoter(User voter) { this.voter = voter; }
+    public Submission getSubmission() { return submission; }
+    public void setSubmission(Submission submission) { this.submission = submission; }
+    public LocalDateTime getVotedAt() { return votedAt; }
+    public void setVotedAt(LocalDateTime votedAt) { this.votedAt = votedAt; }
 }

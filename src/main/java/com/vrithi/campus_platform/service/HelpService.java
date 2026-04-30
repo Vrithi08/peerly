@@ -6,11 +6,13 @@ import com.vrithi.campus_platform.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class HelpService {
 
     @Autowired
@@ -24,6 +26,9 @@ public class HelpService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // Create a help post
     public HelpPostResponse createPost(HelpPostRequest request, String email) {
@@ -40,9 +45,9 @@ public class HelpService {
         return mapPostToResponse(helpPostRepository.save(post));
     }
 
-    // Get all open posts sorted by urgency
-    public List<HelpPostResponse> getAllOpenPosts() {
-        return helpPostRepository.findByResolvedFalseOrderByUrgencyDesc()
+    // Get all posts sorted by status and urgency
+    public List<HelpPostResponse> getAllPosts() {
+        return helpPostRepository.findAllByOrderByResolvedAscUrgencyDescCreatedAtDesc()
                 .stream()
                 .map(this::mapPostToResponse)
                 .collect(Collectors.toList());
@@ -82,6 +87,14 @@ public class HelpService {
                 "New reply on your post: " + post.getTopic()
         );
 
+        // Save persistent notification
+        notificationService.createNotification(
+                post.getUser(),
+                "New reply on your post: " + post.getTopic(),
+                "REPLY",
+                post.getId()
+        );
+
         return mapReplyToResponse(saved);
     }
 
@@ -109,6 +122,14 @@ public class HelpService {
         helper.setHelpPoints(helper.getHelpPoints() + 10);
         userRepository.save(helper);
 
+        // Notify helper about points and accepted answer
+        notificationService.createNotification(
+                helper,
+                "Your answer was accepted! +10 points earned.",
+                "BEST_ANSWER",
+                post.getId()
+        );
+
         return mapReplyToResponse(reply);
     }
 
@@ -120,11 +141,33 @@ public class HelpService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void deletePost(Long id, String email) {
+        HelpPost post = helpPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Help post not found"));
+        
+        if (!post.getUser().getEmail().equalsIgnoreCase(email)) {
+            throw new RuntimeException("You are not authorized to delete this post.");
+        }
+        
+        // Delete all replies first to avoid constraint issues
+        if (post.getReplies() != null && !post.getReplies().isEmpty()) {
+            helpReplyRepository.deleteAll(post.getReplies());
+        }
+
+        // Delete notifications related to this post
+        notificationService.deleteByReferenceIdAndType(id, "REPLY");
+        
+        helpPostRepository.delete(post);
+    }
+
     private HelpPostResponse mapPostToResponse(HelpPost post) {
         HelpPostResponse response = new HelpPostResponse();
         response.setId(post.getId());
         response.setPostedByName(post.getUser().getName());
         response.setPostedByEmail(post.getUser().getEmail());
+        response.setPostedByDepartment(post.getUser().getDepartment());
+        response.setPostedByBatch(post.getUser().getBatch());
         response.setSubject(post.getSubject());
         response.setTopic(post.getTopic());
         response.setDescription(post.getDescription());
@@ -148,6 +191,8 @@ public class HelpService {
         response.setHelpPostId(reply.getHelpPost().getId());
         response.setRepliedByName(reply.getUser().getName());
         response.setRepliedByEmail(reply.getUser().getEmail());
+        response.setRepliedByDepartment(reply.getUser().getDepartment());
+        response.setRepliedByBatch(reply.getUser().getBatch());
         response.setContent(reply.getContent());
         response.setMediaUrl(reply.getMediaUrl());
         response.setAccepted(reply.isAccepted());
