@@ -263,6 +263,10 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
             <Text style={styles.topicTitle}>{post.topic}</Text>
             <Text style={styles.descriptionText}>{post.description}</Text>
 
+            {post.mediaUrl && (
+              <Image source={{ uri: post.mediaUrl }} style={styles.postAttachment} />
+            )}
+
             <View style={styles.authorSection}>
               <Image source={{ uri: `https://i.pravatar.cc/100?u=${post.postedByEmail}` }} style={styles.avatar} />
               <View style={{ flex: 1 }}>
@@ -311,6 +315,11 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
               </View>
 
               <Text style={styles.replyContent}>{reply.content}</Text>
+              
+              {reply.mediaUrl && (
+                <Image source={{ uri: reply.mediaUrl }} style={styles.replyImage} />
+              )}
+
               <Text style={styles.replyTime}>1h ago</Text>
             </View>
           ))}
@@ -460,7 +469,8 @@ const styles = StyleSheet.create({
   subjectTag: { fontSize: 13, fontWeight: '800', color: '#F97316' },
   
   topicTitle: { fontSize: 24, fontWeight: '900', color: '#1F2937', marginBottom: 12, lineHeight: 32 },
-  descriptionText: { fontSize: 15, color: '#4B5563', lineHeight: 24, fontWeight: '500', marginBottom: 32 },
+  descriptionText: { fontSize: 15, color: '#4B5563', lineHeight: 24, fontWeight: '500', marginBottom: 20 },
+  postAttachment: { width: '100%', height: 250, borderRadius: 16, marginBottom: 32, resizeMode: 'cover', borderWidth: 1, borderColor: '#FED7AA' },
   
   authorSection: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 20 },
   avatar: { width: 44, height: 44, borderRadius: 16, backgroundColor: '#E5E7EB' },
@@ -507,6 +517,7 @@ const styles = StyleSheet.create({
   acceptBtnText: { color: '#F97316', fontSize: 11, fontWeight: '800' },
   
   replyContent: { fontSize: 14, color: '#4B5563', lineHeight: 22, fontWeight: '500' },
+  replyImage: { width: '100%', height: 180, borderRadius: 12, marginTop: 12, resizeMode: 'cover', borderWidth: 1, borderColor: '#E5E7EB' },
   replyTime: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', marginTop: 12 },
 
   inputBar: {

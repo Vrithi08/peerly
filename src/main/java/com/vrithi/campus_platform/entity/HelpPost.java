@@ -25,6 +25,8 @@ public class HelpPost {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
+    private String mediaUrl;
+
     @Enumerated(EnumType.STRING)
     private Urgency urgency = Urgency.CHILL;
 
@@ -46,6 +48,8 @@ public class HelpPost {
     public void setTopic(String topic) { this.topic = topic; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getMediaUrl() { return mediaUrl; }
+    public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
     public Urgency getUrgency() { return urgency; }
     public void setUrgency(Urgency urgency) { this.urgency = urgency; }
     public boolean isResolved() { return resolved; }

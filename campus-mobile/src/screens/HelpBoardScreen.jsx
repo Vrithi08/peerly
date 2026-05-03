@@ -27,7 +27,8 @@ import {
   ArrowRight,
   BookOpen,
   X,
-  Users
+  Users,
+  Image as ImageIcon
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Modal } from 'react-native';
@@ -250,6 +251,13 @@ export default function HelpBoardScreen({ navigation }) {
 
           <Text style={styles.topicText}>{item.topic}</Text>
           <Text style={styles.descriptionText} numberOfLines={2}>{item.description}</Text>
+
+          {item.mediaUrl && (
+            <View style={styles.attachmentPill}>
+              <ImageIcon size={14} color="#10B981" />
+              <Text style={styles.attachmentText}>Image Attached</Text>
+            </View>
+          )}
 
           <View style={styles.statsRow}>
             <View style={styles.authorGroup}>
@@ -536,8 +544,11 @@ const styles = StyleSheet.create({
   topicText: { fontSize: 18, fontWeight: '800', color: '#1F2937', marginBottom: 8, lineHeight: 24 },
   descriptionText: { fontSize: 14, color: '#6B7280', fontWeight: '500', lineHeight: 20, marginBottom: 20 },
 
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16, marginTop: 12 },
   authorGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  
+  attachmentPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 8 },
+  attachmentText: { fontSize: 11, fontWeight: '800', color: '#10B981' },
   avatarMini: { width: 24, height: 24, borderRadius: 8, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
   authorName: { fontSize: 12, fontWeight: '700', color: '#4B5563' },

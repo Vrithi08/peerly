@@ -14,6 +14,7 @@ public class HelpPostResponse {
     private String topic;
     private String description;
     private Urgency urgency;
+    private String mediaUrl;
     private boolean resolved;
     private List<HelpReplyResponse> replies;
     private LocalDateTime createdAt;
@@ -37,6 +38,8 @@ public class HelpPostResponse {
     public void setDescription(String description) { this.description = description; }
     public Urgency getUrgency() { return urgency; }
     public void setUrgency(Urgency urgency) { this.urgency = urgency; }
+    public String getMediaUrl() { return mediaUrl; }
+    public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
     public boolean isResolved() { return resolved; }
     public void setResolved(boolean resolved) { this.resolved = resolved; }
     public List<HelpReplyResponse> getReplies() { return replies; }

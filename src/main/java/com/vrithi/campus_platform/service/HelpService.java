@@ -41,6 +41,7 @@ public class HelpService {
         post.setTopic(request.getTopic());
         post.setDescription(request.getDescription());
         post.setUrgency(request.getUrgency() != null ? request.getUrgency() : Urgency.CHILL);
+        post.setMediaUrl(request.getMediaUrl());
 
         return mapPostToResponse(helpPostRepository.save(post));
     }
@@ -179,6 +180,7 @@ public class HelpService {
         response.setTopic(post.getTopic());
         response.setDescription(post.getDescription());
         response.setUrgency(post.getUrgency());
+        response.setMediaUrl(post.getMediaUrl());
         response.setResolved(post.isResolved());
         response.setCreatedAt(post.getCreatedAt());
 

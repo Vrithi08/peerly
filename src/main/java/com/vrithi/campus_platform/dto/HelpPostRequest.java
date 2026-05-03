@@ -17,6 +17,8 @@ public class HelpPostRequest {
 
     private Urgency urgency;
 
+    private String mediaUrl;
+
     // Getters and Setters
     public String getSubject() { return subject; }
     public void setSubject(String subject) { this.subject = subject; }
@@ -26,4 +28,6 @@ public class HelpPostRequest {
     public void setDescription(String description) { this.description = description; }
     public Urgency getUrgency() { return urgency; }
     public void setUrgency(Urgency urgency) { this.urgency = urgency; }
+    public String getMediaUrl() { return mediaUrl; }
+    public void setMediaUrl(String mediaUrl) { this.mediaUrl = mediaUrl; }
 }
