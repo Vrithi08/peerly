@@ -10,7 +10,8 @@ import {
   Animated, 
   Dimensions,
   Platform,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -96,7 +97,7 @@ const FloatingParticle = ({ index }) => {
 };
 
 // --- Avatar Illustration Component with Pulse Animation ---
-const AvatarIllustration = ({ Icon, size, color = "#ffffff", glow = false }) => {
+const AvatarIllustration = ({ Icon, size, color = "#ffffff", glow = false, imageUrl }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -119,7 +120,11 @@ const AvatarIllustration = ({ Icon, size, color = "#ffffff", glow = false }) => 
   return (
     <Animated.View style={[styles.avatarCircle, { width: size, height: size, borderRadius: size / 2, transform: [{ scale: pulseAnim }] }]}>
       {glow && <View style={[styles.glowEffect, { width: size + 20, height: size + 20, borderRadius: (size + 20) / 2 }]} />}
-      <Icon size={size * 0.5} color={color} strokeWidth={1.5} />
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      ) : (
+        <Icon size={size * 0.5} color={color} strokeWidth={1.5} />
+      )}
     </Animated.View>
   );
 };
@@ -166,14 +171,13 @@ export default function LeaderboardScreen({ navigation }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCat, setSelectedCat] = useState('Global');
   const [myRank, setMyRank] = useState({ rank: '--', xp: 0 });
 
   const ILLUSTRATIONS = [Bot, Rocket, Zap, Target, User, Sparkles];
 
   useEffect(() => { 
     fetchLeaderboard(); 
-  }, [selectedCat]);
+  }, []);
 
   const fetchLeaderboard = async () => {
     try {
@@ -203,25 +207,11 @@ export default function LeaderboardScreen({ navigation }) {
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.catWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
-          {['Global', 'Coding', 'Design', 'Photography', 'Writing'].map(cat => (
-            <TouchableOpacity 
-              key={cat} 
-              style={[styles.catChip, selectedCat === cat && styles.catChipActive]}
-              onPress={() => setSelectedCat(cat)}
-            >
-              <Text style={[styles.catText, selectedCat === cat && styles.catTextActive]}>{cat}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
       <View style={styles.podiumContainer}>
         {/* #2 Rank */}
         <View style={styles.podiumItem}>
           <View style={styles.avatarWrapper}>
-            <AvatarIllustration Icon={Zap} size={70} color="rgba(249, 115, 22, 0.6)" />
+            <AvatarIllustration Icon={Zap} size={70} color="rgba(249, 115, 22, 0.6)" imageUrl={users[1]?.profileImage} />
             <View style={styles.rankBadgeSmall}><Text style={styles.rankBadgeText}>2</Text></View>
           </View>
           <View style={styles.podiumTextContent}>
@@ -236,7 +226,7 @@ export default function LeaderboardScreen({ navigation }) {
             <Crown size={32} color="#F97316" fill="#F97316" />
           </View>
           <View style={styles.avatarWrapper}>
-            <AvatarIllustration Icon={Bot} size={100} color="#F97316" glow={true} />
+            <AvatarIllustration Icon={Bot} size={100} color="#F97316" glow={true} imageUrl={users[0]?.profileImage} />
             <View style={styles.rankBadgeLarge}><Text style={styles.rankBadgeTextDark}>1</Text></View>
           </View>
           <View style={styles.podiumTextContent}>
@@ -251,7 +241,7 @@ export default function LeaderboardScreen({ navigation }) {
         {/* #3 Rank */}
         <View style={styles.podiumItem}>
           <View style={styles.avatarWrapper}>
-            <AvatarIllustration Icon={Rocket} size={64} color="rgba(249, 115, 22, 0.4)" />
+            <AvatarIllustration Icon={Rocket} size={64} color="rgba(249, 115, 22, 0.4)" imageUrl={users[2]?.profileImage} />
             <View style={styles.rankBadgeSmall}><Text style={styles.rankBadgeText}>3</Text></View>
           </View>
           <View style={styles.podiumTextContent}>
@@ -278,7 +268,11 @@ export default function LeaderboardScreen({ navigation }) {
           <Text style={styles.rankText}>{index + 1}</Text>
         </View>
         <View style={styles.userIllustrationBox}>
-          <Illustration size={20} color="rgba(249, 115, 22, 0.6)" strokeWidth={1.5} />
+          {item.profileImage ? (
+            <Image source={{ uri: item.profileImage }} style={{ width: 44, height: 44, borderRadius: 16 }} />
+          ) : (
+            <Illustration size={20} color="rgba(249, 115, 22, 0.6)" strokeWidth={1.5} />
+          )}
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.name}</Text>

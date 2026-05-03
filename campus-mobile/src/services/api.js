@@ -76,6 +76,18 @@ export const userService = {
   deleteAccount: async () => {
     const response = await api.delete('/users/account');
     return response.data;
+  },
+  uploadProfileImage: async (imageUri) => {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'profile.jpg',
+    });
+    const response = await api.post('/users/profile/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   }
 };
 
@@ -87,6 +99,10 @@ export const challengeService = {
   getById: async (id) => {
     const response = await api.get(`/challenges/${id}`);
     return response.data;
+  },
+  create: async (challengeData) => {
+    const response = await api.post('/challenges', challengeData);
+    return response.data;
   }
 };
 
@@ -94,6 +110,27 @@ export const submissionService = {
   getByChallengeId: async (challengeId) => {
     const response = await api.get(`/submissions/${challengeId}`);
     return response.data;
+  },
+  create: async (challengeId, data) => {
+    if (data.type === 'text') {
+      const formData = new FormData();
+      formData.append('content', data.content);
+      const response = await api.post(`/submissions/${challengeId}/text`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } else {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: data.attachmentUri,
+        type: data.type === 'audio' ? 'audio/mpeg' : 'image/jpeg',
+        name: data.type === 'audio' ? 'audio.mp3' : 'upload.jpg',
+      });
+      const response = await api.post(`/submissions/${challengeId}/file`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    }
   }
 };
 
@@ -128,7 +165,10 @@ export const helpService = {
   deletePost: async (postId) => {
     const response = await api.post(`/help/posts/${postId}/delete`);
     return response.data;
-  },
+  }
+};
+
+export const uploadService = {
   uploadFile: async (file) => {
     const formData = new FormData();
     formData.append('file', {

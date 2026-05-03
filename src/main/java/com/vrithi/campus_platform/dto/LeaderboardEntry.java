@@ -8,10 +8,11 @@ public class LeaderboardEntry {
     private int helpPoints;
     private int totalPoints;
     private int rank;
+    private String profileImage;
 
     public LeaderboardEntry() {}
 
-    public LeaderboardEntry(Long userId, String name, String college, int challengePoints, int helpPoints, int totalPoints, int rank) {
+    public LeaderboardEntry(Long userId, String name, String college, int challengePoints, int helpPoints, int totalPoints, int rank, String profileImage) {
         this.userId = userId;
         this.name = name;
         this.college = college;
@@ -19,6 +20,7 @@ public class LeaderboardEntry {
         this.helpPoints = helpPoints;
         this.totalPoints = totalPoints;
         this.rank = rank;
+        this.profileImage = profileImage;
     }
 
     // Getters and Setters
@@ -36,4 +38,6 @@ public class LeaderboardEntry {
     public void setTotalPoints(int totalPoints) { this.totalPoints = totalPoints; }
     public int getRank() { return rank; }
     public void setRank(int rank) { this.rank = rank; }
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 }

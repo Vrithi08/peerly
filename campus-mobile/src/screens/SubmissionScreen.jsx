@@ -169,13 +169,13 @@ export default function SubmissionScreen({ route, navigation }) {
             
             <View style={styles.previewCard}>
               <Text style={styles.previewLabel}>YOUR ENTRY</Text>
-              {existingSubmission.type === 'text' ? (
-                <Text style={styles.previewText} numberOfLines={10}>{existingSubmission.content}</Text>
+              {existingSubmission.contentType === 'TEXT' || existingSubmission.type === 'text' ? (
+                <Text style={styles.previewText} numberOfLines={10}>{existingSubmission.textContent || existingSubmission.content}</Text>
               ) : (
                 <View style={styles.previewMediaBox}>
-                  {(existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri) ? (
+                  {(existingSubmission.contentUrl || existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri) ? (
                     <Image 
-                      source={{ uri: existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri }} 
+                      source={{ uri: existingSubmission.contentUrl || existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri }} 
                       style={styles.previewImage} 
                     />
                   ) : (

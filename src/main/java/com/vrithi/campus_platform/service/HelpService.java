@@ -80,20 +80,27 @@ public class HelpService {
 
         HelpReply saved = helpReplyRepository.save(reply);
 
-        // Notify the post owner in real time
-        messagingTemplate.convertAndSendToUser(
-                post.getUser().getEmail(),
-                "/queue/notifications",
-                "New reply on your post: " + post.getTopic()
-        );
+        // Notify the post owner (Non-blocking)
+        try {
+            System.out.println("Attempting to notify owner: " + post.getUser().getEmail());
+            // Real-time
+            messagingTemplate.convertAndSendToUser(
+                    post.getUser().getEmail(),
+                    "/queue/notifications",
+                    "New reply on your post: " + post.getTopic()
+            );
 
-        // Save persistent notification
-        notificationService.createNotification(
-                post.getUser(),
-                "New reply on your post: " + post.getTopic(),
-                "REPLY",
-                post.getId()
-        );
+            // Persistent
+            notificationService.createNotification(
+                    post.getUser(),
+                    "New reply on your post: " + post.getTopic(),
+                    "REPLY",
+                    post.getId()
+            );
+        } catch (Exception e) {
+            System.err.println("Notification failed: " + e.getMessage());
+            // We don't throw here so the reply still gets saved successfully
+        }
 
         return mapReplyToResponse(saved);
     }

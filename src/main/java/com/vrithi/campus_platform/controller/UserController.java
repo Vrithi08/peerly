@@ -26,4 +26,12 @@ public class UserController {
             @RequestBody UserProfileResponse request) {
         return ResponseEntity.ok(leaderboardService.updateProfile(userDetails.getUsername(), request));
     }
+
+    @PostMapping("/profile/image")
+    public ResponseEntity<java.util.Map<String, String>> uploadProfileImage(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        String imageUrl = leaderboardService.uploadProfileImage(userDetails.getUsername(), file);
+        return ResponseEntity.ok(java.util.Map.of("profileImage", imageUrl));
+    }
 }

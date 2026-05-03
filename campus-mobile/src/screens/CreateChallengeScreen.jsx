@@ -82,7 +82,7 @@ export default function CreateChallengeScreen({ navigation }) {
         description,
         category,
         submissionDeadline: submissionDeadline.toISOString(),
-        endDate: votingDeadline.toISOString(), // Voting deadline is the final end date
+        votingDeadline: votingDeadline.toISOString(),
         status: 'OPEN'
       });
       Alert.alert('Arena Ready!', 'Your challenge is now live for everyone to see.', [

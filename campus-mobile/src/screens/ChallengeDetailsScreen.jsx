@@ -66,7 +66,7 @@ const getCategoryCover = (category) => {
 
 const getPreviewUrl = (sub) => {
   if (!sub) return null;
-  const url = sub.secure_url || sub.url || sub.imageUrl || sub.attachmentUri || sub.fileUrl || sub.mediaUrl || sub.file_url || sub.attachment?.url || sub.files?.[0]?.url;
+  const url = sub.contentUrl || sub.secure_url || sub.url || sub.imageUrl || sub.attachmentUri || sub.fileUrl || sub.mediaUrl || sub.file_url || sub.attachment?.url || sub.files?.[0]?.url;
   if (!url) return null;
   if (url.startsWith('http') || url.startsWith('file')) return url;
   const base = API_BASE_URL.replace('/api', '');
@@ -293,7 +293,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                     ) : (
                       <View style={styles.subTextPlaceholder}>
                         <FileText size={20} color="#FED7AA" style={{ marginBottom: 8 }} />
-                        <Text style={styles.subTextSnippet} numberOfLines={4}>{sub.content || 'Text Submission'}</Text>
+                        <Text style={styles.subTextSnippet} numberOfLines={4}>{sub.textContent || sub.content || 'Text Submission'}</Text>
                       </View>
                     )}
                     {(sub.voteCount || 0) > 5 && (
@@ -369,9 +369,9 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.viewerScroll}>
-              {selectedSubmission?.type?.toLowerCase() === 'text' ? (
+              {(selectedSubmission?.contentType === 'TEXT' || selectedSubmission?.type?.toLowerCase() === 'text') ? (
                 <View style={styles.viewerTextContainer}>
-                  <Text style={styles.viewerText}>{selectedSubmission?.content}</Text>
+                  <Text style={styles.viewerText}>{selectedSubmission?.textContent || selectedSubmission?.content}</Text>
                 </View>
               ) : getPreviewUrl(selectedSubmission) ? (
                 <Image 
@@ -381,7 +381,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                 />
               ) : (
                 <View style={styles.viewerTextContainer}>
-                  <Text style={styles.viewerText}>{selectedSubmission?.content || selectedSubmission?.description || 'No content preview available'}</Text>
+                  <Text style={styles.viewerText}>{selectedSubmission?.textContent || selectedSubmission?.content || selectedSubmission?.description || 'No content preview available'}</Text>
                 </View>
               )}
               

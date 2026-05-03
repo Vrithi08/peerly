@@ -4,11 +4,13 @@ public class AuthResponse {
     private String token;
     private String email;
     private String name;
+    private String profileImage;
 
-    public AuthResponse(String token, String email, String name) {
+    public AuthResponse(String token, String email, String name, String profileImage) {
         this.token = token;
         this.email = email;
         this.name = name;
+        this.profileImage = profileImage;
     }
 
     // Getters and Setters
@@ -18,4 +20,6 @@ public class AuthResponse {
     public void setEmail(String email) { this.email = email; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 }

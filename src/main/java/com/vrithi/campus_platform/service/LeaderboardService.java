@@ -1,7 +1,9 @@
 package com.vrithi.campus_platform.service;
 
 import com.vrithi.campus_platform.dto.LeaderboardEntry;
+import com.vrithi.campus_platform.dto.SubmissionResponse;
 import com.vrithi.campus_platform.dto.UserProfileResponse;
+import com.vrithi.campus_platform.entity.Submission;
 import com.vrithi.campus_platform.entity.User;
 import com.vrithi.campus_platform.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,10 @@ public class LeaderboardService {
 
     @Autowired
     private HelpReplyRepository helpReplyRepository;
+
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     public List<LeaderboardEntry> getLeaderboardByDepartment(String department) {
         List<User> users = userRepository.findAllOrderByTotalPointsDesc()
                 .stream()
@@ -42,7 +48,8 @@ public class LeaderboardService {
                     user.getChallengePoints(),
                     user.getHelpPoints(),
                     total,
-                    i + 1
+                    i + 1,
+                    user.getProfileImage()
             ));
         }
         return leaderboard;
@@ -63,7 +70,8 @@ public class LeaderboardService {
                     user.getChallengePoints(),
                     user.getHelpPoints(),
                     total,
-                    i + 1
+                    i + 1,
+                    user.getProfileImage()
             ));
         }
 
@@ -127,6 +135,25 @@ public class LeaderboardService {
         profile.setBio(user.getBio());
         profile.setGithubUrl(user.getGithubUrl());
         profile.setLinkedinUrl(user.getLinkedinUrl());
+        profile.setProfileImage(user.getProfileImage());
+
+        // Populate recent submissions
+        List<Submission> submissions = submissionRepository.findByUserId(user.getId());
+        List<SubmissionResponse> submissionResponses = submissions.stream().map(s -> {
+            SubmissionResponse sr = new SubmissionResponse();
+            sr.setId(s.getId());
+            sr.setChallengeId(s.getChallenge().getId());
+            sr.setChallengeTitle(s.getChallenge().getTitle());
+            sr.setSubmittedByName(s.getUser().getName());
+            sr.setSubmittedByEmail(s.getUser().getEmail());
+            sr.setContentUrl(s.getContentUrl());
+            sr.setTextContent(s.getTextContent());
+            sr.setContentType(s.getContentType());
+            sr.setVoteCount(s.getVoteCount());
+            sr.setSubmittedAt(s.getSubmittedAt());
+            return sr;
+        }).collect(Collectors.toList());
+        profile.setRecentSubmissions(submissionResponses);
 
         return profile;
     }
@@ -144,5 +171,19 @@ public class LeaderboardService {
         
         userRepository.save(user);
         return buildProfile(user);
+    }
+
+    public String uploadProfileImage(String email, org.springframework.web.multipart.MultipartFile file) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        try {
+            String imageUrl = cloudinaryService.uploadFile(file);
+            user.setProfileImage(imageUrl);
+            userRepository.save(user);
+            return imageUrl;
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to upload profile image", e);
+        }
     }
 }

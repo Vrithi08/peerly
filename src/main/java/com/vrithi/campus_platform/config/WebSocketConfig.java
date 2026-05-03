@@ -10,10 +10,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Messages from server to client go through /topic
-        config.enableSimpleBroker("/topic");
+        // Messages from server to client go through /topic or /queue
+        config.enableSimpleBroker("/topic", "/queue");
         // Messages from client to server are prefixed with /app
         config.setApplicationDestinationPrefixes("/app");
+        // For private notifications
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override

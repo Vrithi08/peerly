@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { helpService, userService, api } from '../services/api';
+import { helpService, userService, uploadService, api } from '../services/api';
 import { 
   ArrowLeft, 
   MessageCircle, 
@@ -117,10 +117,10 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
     try {
       let mediaUrl = null;
       if (selectedImage) {
-        const uploadRes = await api.uploadFile(selectedImage);
+        const uploadRes = await uploadService.uploadFile(selectedImage);
         mediaUrl = uploadRes.url;
       } else if (selectedFile) {
-        const uploadRes = await api.uploadFile(selectedFile);
+        const uploadRes = await uploadService.uploadFile(selectedFile);
         mediaUrl = uploadRes.url;
       }
 
@@ -134,8 +134,9 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
       fetchPost();
       showToastMessage('Reply posted! ✨');
     } catch (err) {
-      console.error(err);
-      showToastMessage('Failed to post reply.');
+      console.error('Post Reply Error:', err);
+      const msg = err.response?.data?.message || err.message || 'Network error';
+      showToastMessage(`Error: ${msg}`);
     } finally {
       setSending(false);
     }

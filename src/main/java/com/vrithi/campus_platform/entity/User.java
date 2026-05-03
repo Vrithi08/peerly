@@ -35,6 +35,8 @@ public class User {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    private String profileImage;
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -68,4 +70,6 @@ public class User {
     public void setHelpPoints(int helpPoints) { this.helpPoints = helpPoints; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 }

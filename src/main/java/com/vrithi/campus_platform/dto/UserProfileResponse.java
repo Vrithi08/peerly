@@ -26,6 +26,8 @@ public class UserProfileResponse {
     private int acceptedReplies;
     private LocalDateTime joinedAt;
     private List<ChallengeResponse> recentChallenges;
+    private String profileImage;
+    private List<SubmissionResponse> recentSubmissions;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -72,4 +74,8 @@ public class UserProfileResponse {
     public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
     public List<ChallengeResponse> getRecentChallenges() { return recentChallenges; }
     public void setRecentChallenges(List<ChallengeResponse> recentChallenges) { this.recentChallenges = recentChallenges; }
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
+    public List<SubmissionResponse> getRecentSubmissions() { return recentSubmissions; }
+    public void setRecentSubmissions(List<SubmissionResponse> recentSubmissions) { this.recentSubmissions = recentSubmissions; }
 }

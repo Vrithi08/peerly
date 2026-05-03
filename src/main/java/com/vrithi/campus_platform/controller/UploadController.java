@@ -19,9 +19,11 @@ public class UploadController {
     @PostMapping
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
+            System.out.println("Receiving file upload: " + file.getOriginalFilename() + " (" + file.getSize() + " bytes)");
             String url = cloudinaryService.uploadFile(file);
             return ResponseEntity.ok(Map.of("url", url));
-        } catch (IOException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Upload failed: " + e.getMessage()));
         }
     }

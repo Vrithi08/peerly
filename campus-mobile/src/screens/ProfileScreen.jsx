@@ -11,14 +11,17 @@ import {
   Animated,
   Platform,
   Modal,
-  TextInput
+  TextInput,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { challengeService, userService, helpService } from '../services/api';
 import { 
   Settings, 
+  Camera,
   LogOut, 
   Award, 
   Zap, 
@@ -98,6 +101,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [bookmarkedChallenges, setBookmarkedChallenges] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -154,6 +158,32 @@ export default function ProfileScreen({ navigation, onLogout }) {
     setShowLogoutModal(true);
   };
 
+  const handlePickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setIsUploadingImage(true);
+      try {
+        const response = await userService.uploadProfileImage(result.assets[0].uri);
+        const newImageUrl = response.profileImage || response.url || response;
+        setUser(prev => ({ ...prev, profileImage: newImageUrl }));
+        
+        const updatedUser = { ...user, profileImage: newImageUrl };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (e) {
+        console.error(e);
+        Alert.alert("Error", "Failed to upload profile image.");
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+  };
+
   if (loading) return (
     <View style={styles.center}><ActivityIndicator color="#F97316" /></View>
   );
@@ -175,10 +205,18 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
         {/* Profile Identity */}
         <View style={styles.profileHero}>
-          <DynamicAvatar icon={Bot} size={110} color="#F97316" />
+          <TouchableOpacity onPress={handlePickImage} disabled={isUploadingImage}>
+            {user?.profileImage ? (
+              <Image source={{ uri: user.profileImage }} style={styles.uploadedAvatar} />
+            ) : (
+              <DynamicAvatar icon={Bot} size={110} color="#F97316" />
+            )}
+            <View style={styles.editAvatarBadge}>
+              {isUploadingImage ? <ActivityIndicator size={12} color="#fff" /> : <Camera size={14} color="#FFF" />}
+            </View>
+          </TouchableOpacity>
           <SlideUpView delay={200} style={styles.identityBox}>
             <Text style={styles.userName}>{user?.name || 'Peer Conqueror'}</Text>
-            <Text style={styles.userTagline}>Peerly Elite Member • Level 12</Text>
           </SlideUpView>
         </View>
 
@@ -186,14 +224,14 @@ export default function ProfileScreen({ navigation, onLogout }) {
         <SlideUpView delay={400} style={styles.statsGrid}>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
-              <History size={18} color="#F97316" />
+              <Rocket size={18} color="#F97316" />
             </View>
             <Text style={styles.statValue}>{user?.totalSubmissions || 0}</Text>
             <Text style={styles.statLabel}>Submissions</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
-              <Award size={18} color="#F97316" />
+              <Target size={18} color="#F97316" />
             </View>
             <Text style={styles.statValue}>{user?.acceptedReplies || 0}</Text>
             <Text style={styles.statLabel}>Help Solutions</Text>
@@ -314,34 +352,45 @@ export default function ProfileScreen({ navigation, onLogout }) {
         )}
 
         {/* My Submissions */}
+        {(user?.recentSubmissions?.length > 0) && (
         <SlideUpView delay={900} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Arena Submissions</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>View All</Text>
-            </TouchableOpacity>
+            <Text style={styles.sectionTitle}>My Submissions</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.submissionScroll}>
-            {[
-              { title: 'Mobile UI Kit', date: '2d ago', status: 'Voting' },
-              { title: 'Campus Mascot', date: '5d ago', status: 'Ended' },
-              { title: 'Logo Design', date: '1w ago', status: 'Winner' },
-            ].map((sub, idx) => (
-              <TouchableOpacity key={idx} style={styles.submissionCard}>
-                <View style={styles.cardStatus}>
-                  <Text style={styles.statusText}>{sub.status}</Text>
-                </View>
-                <Text style={styles.cardTitle}>{sub.title}</Text>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardDate}>{sub.date}</Text>
-                  <ArrowRight size={14} color="#9CA3AF" />
-                </View>
-              </TouchableOpacity>
-            ))}
+            {user.recentSubmissions.map((sub, idx) => {
+              const timeAgo = sub.submittedAt
+                ? (() => {
+                    const diff = Date.now() - new Date(sub.submittedAt).getTime();
+                    const mins = Math.floor(diff / 60000);
+                    if (mins < 60) return `${mins}m ago`;
+                    const hrs = Math.floor(mins / 60);
+                    if (hrs < 24) return `${hrs}h ago`;
+                    const days = Math.floor(hrs / 24);
+                    return `${days}d ago`;
+                  })()
+                : '';
+              return (
+                <TouchableOpacity
+                  key={sub.id || idx}
+                  style={styles.submissionCard}
+                  onPress={() => navigation.navigate('ChallengeDetails', { challengeId: sub.challengeId })}
+                >
+                  <View style={styles.cardStatus}>
+                    <Text style={styles.statusText}>{sub.contentType || 'Submission'}</Text>
+                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{sub.challengeTitle}</Text>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardDate}>{timeAgo}</Text>
+                    <Text style={[styles.cardDate, { color: '#F97316' }]}>{sub.voteCount} votes</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </SlideUpView>
+        )}
 
-        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Sad Logout Modal */}
@@ -390,7 +439,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF7ED' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: {},
   
   topActions: {
     flexDirection: 'row',
@@ -435,6 +484,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 10 }
+  },
+  uploadedAvatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 1.5,
+    borderColor: '#FED7AA'
+  },
+  editAvatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#F97316',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF7ED',
+    elevation: 4
   },
   identityBox: {
     alignItems: 'center',

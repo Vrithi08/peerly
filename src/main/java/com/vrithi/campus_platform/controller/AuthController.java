@@ -75,7 +75,7 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(user.getEmail());
 
-        return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getName()));
+        return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getName(), user.getProfileImage()));
     }
     @GetMapping("/test")
     public ResponseEntity<?> test() {

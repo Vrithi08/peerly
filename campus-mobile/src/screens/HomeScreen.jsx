@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -143,10 +144,12 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('Peer');
 
-  useEffect(() => { 
-    fetchData(); 
-    loadUser();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+      loadUser();
+    }, [])
+  );
 
   const loadUser = async () => {
     const userStr = await AsyncStorage.getItem('user');
@@ -396,7 +399,13 @@ export default function HomeScreen({ navigation, onLogout }) {
                 <View style={[styles.rankBadge, index === 0 && {backgroundColor: '#FEF3C7'}, index === 1 && {backgroundColor: '#F3F4F6'}, index === 2 && {backgroundColor: '#FFEDD5'}]}>
                   <Text style={[styles.rankNum, index === 0 && {color: '#D97706'}, index === 1 && {color: '#4B5563'}, index === 2 && {color: '#C2410C'}]}>{index + 1}</Text>
                 </View>
-                <Image source={{ uri: `https://i.pravatar.cc/100?u=${user.id}` }} style={styles.leaderAvatar} />
+                {user.avatarUrl || user.profileImage ? (
+                  <Image source={{ uri: user.avatarUrl || user.profileImage }} style={styles.leaderAvatar} />
+                ) : (
+                  <View style={[styles.leaderAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <User size={20} color="#9CA3AF" />
+                  </View>
+                )}
                 <View style={styles.leaderInfo}>
                   <Text style={styles.leaderName}>{user.name}</Text>
                   <Text style={styles.leaderMeta}>Level {Math.floor(user.totalPoints/100) + 1}</Text>
