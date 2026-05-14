@@ -28,6 +28,7 @@ public class HelpController {
 
     @GetMapping("/posts")
     public ResponseEntity<List<HelpPostResponse>> getAllPosts() {
+        System.out.println(">>> CONTROLLER: getAllPosts called");
         return ResponseEntity.ok(helpService.getAllPosts());
     }
 

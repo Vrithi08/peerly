@@ -37,6 +37,7 @@ public class ChallengeService {
         challenge.setSubmissionDeadline(request.getSubmissionDeadline());
         challenge.setVotingDeadline(request.getVotingDeadline());
         challenge.setCreatedBy(user);
+        challenge.setImageUrl(request.getImageUrl());
 
         Challenge saved = challengeRepository.save(challenge);
         return mapToResponse(saved);
@@ -71,6 +72,7 @@ public class ChallengeService {
         challenge.setCategory(request.getCategory());
         challenge.setSubmissionDeadline(request.getSubmissionDeadline());
         challenge.setVotingDeadline(request.getVotingDeadline());
+        challenge.setImageUrl(request.getImageUrl());
 
         return mapToResponse(challengeRepository.save(challenge));
     }
@@ -100,7 +102,15 @@ public class ChallengeService {
         response.setSubmissionDeadline(challenge.getSubmissionDeadline());
         response.setVotingDeadline(challenge.getVotingDeadline());
         response.setCreatedAt(challenge.getCreatedAt());
+        response.setImageUrl(challenge.getImageUrl());
         response.setParticipantsCount((int) submissionRepository.countByChallengeId(challenge.getId()));
+        
+        submissionRepository.findFirstByChallengeIdOrderByVoteCountDesc(challenge.getId())
+                .ifPresent(top -> {
+                    response.setTopPerformerName(top.getUser().getName());
+                    response.setTopPerformerVotes(top.getVoteCount());
+                });
+                
         return response;
     }
 }

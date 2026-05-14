@@ -16,6 +16,9 @@ public class ChallengeResponse {
     private LocalDateTime votingDeadline;
     private LocalDateTime createdAt;
     private int participantsCount;
+    private String imageUrl;
+    private String topPerformerName;
+    private int topPerformerVotes;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -40,4 +43,10 @@ public class ChallengeResponse {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public int getParticipantsCount() { return participantsCount; }
     public void setParticipantsCount(int participantsCount) { this.participantsCount = participantsCount; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getTopPerformerName() { return topPerformerName; }
+    public void setTopPerformerName(String topPerformerName) { this.topPerformerName = topPerformerName; }
+    public int getTopPerformerVotes() { return topPerformerVotes; }
+    public void setTopPerformerVotes(int topPerformerVotes) { this.topPerformerVotes = topPerformerVotes; }
 }

@@ -31,6 +31,7 @@ public class Challenge {
     private ChallengeStatus status = ChallengeStatus.OPEN;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+    private String imageUrl;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -51,4 +52,6 @@ public class Challenge {
     public void setStatus(ChallengeStatus status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

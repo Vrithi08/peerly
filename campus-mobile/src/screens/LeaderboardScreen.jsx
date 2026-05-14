@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -175,9 +176,11 @@ export default function LeaderboardScreen({ navigation }) {
 
   const ILLUSTRATIONS = [Bot, Rocket, Zap, Target, User, Sparkles];
 
-  useEffect(() => { 
-    fetchLeaderboard(); 
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeaderboard();
+    }, [])
+  );
 
   const fetchLeaderboard = async () => {
     try {

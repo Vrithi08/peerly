@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { 
   View, 
   Text, 
@@ -12,26 +13,48 @@ import {
   Dimensions, 
   Animated,
   Platform,
-  Switch
+  Switch,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   X, 
-  FileText, 
-  Image as ImageIcon, 
-  Music, 
+  Trash2, 
+  Plus, 
   CheckCircle2, 
-  ChevronRight, 
-  Clock,
-  Info,
-  Send,
-  EyeOff,
-  Plus,
-  Trash2,
-  ShieldCheck,
+  Bot, 
+  Info, 
+  Search, 
+  ArrowLeft, 
+  Users, 
+  ThumbsUp, 
+  Flame, 
+  Clock, 
+  Award, 
+  Bookmark, 
+  Share2, 
+  Trophy,
   Zap,
-  Play
+  Sparkles,
+  ArrowUpRight,
+  Calendar,
+  Layers,
+  Star,
+  ChevronDown,
+  ChevronUp,
+  Brain,
+  Palette,
+  Target,
+  FileText,
+  Music,
+  Image as ImageIcon,
+  Video,
+  File,
+  Play,
+  EyeOff,
+  ChevronRight
 } from 'lucide-react-native';
+import ThemedAlert from '../components/ThemedAlert';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { challengeService, submissionService } from '../services/api';
@@ -43,17 +66,23 @@ export default function SubmissionScreen({ route, navigation }) {
   
   // State
   const [challenge, setChallenge] = useState(null);
+  const [existingSubmission, setExistingSubmission] = useState(null);
   const [submissionType, setSubmissionType] = useState('text'); // 'text', 'image', 'audio'
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState([]); // Multiple for image
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingSubmission, setExistingSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   useEffect(() => {
     fetchData();
@@ -82,30 +111,156 @@ export default function SubmissionScreen({ route, navigation }) {
     }
   };
 
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const normalized = dateStr.toString().replace(' ', 'T');
+      const date = new Date(normalized);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const updateCountdown = () => {
     if (!challenge) return;
+    const deadline = challenge.submissionDeadline || challenge.endDate;
+    const end = parseDate(deadline);
+    if (!end) { setCountdown('--'); return; }
+
     const now = new Date().getTime();
-    const end = new Date(challenge.endDate).getTime();
-    const diff = end - now;
-    if (diff <= 0) { setCountdown('ENDED'); return; }
+    const diff = end.getTime() - now;
+    
+    if (diff <= 0) { 
+      setCountdown('CLOSED'); 
+      return; 
+    }
+
     const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const s = Math.floor((diff % (1000 * 60)) / 1000);
     setCountdown(`${h}h ${m}m ${s}s`);
   };
 
+  return (
+    <Animated.View style={[style, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
+
+// --- Victory Robot (Donut Style) ---
+const VictoryRobot = () => {
+  const jumpAnim = useRef(new Animated.Value(0)).current;
+  const armAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(jumpAnim, { toValue: -15, duration: 400, useNativeDriver: true }),
+          Animated.timing(armAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(jumpAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(armAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  }, []);
+
+  const rotateL = armAnim.interpolate({ inputRange: [0, 1], outputRange: ['15deg', '-30deg'] });
+  const rotateR = armAnim.interpolate({ inputRange: [0, 1], outputRange: ['-15deg', '30deg'] });
+
+  return (
+    <Animated.View style={[styles.victoryBotWrapper, { transform: [{ translateY: jumpAnim }] }]}>
+      <View style={styles.botHead}>
+        <View style={styles.botEyes}>
+          <View style={styles.botEye} />
+          <View style={styles.botEye} />
+        </View>
+        <View style={styles.botSmile} />
+      </View>
+      <View style={styles.botBodyWrapper}>
+        <Animated.View style={[styles.botArm, { transform: [{ rotate: rotateL }] }]} />
+        <View style={styles.botMainBody}>
+          <Trophy size={32} color="#F97316" strokeWidth={2.5} />
+        </View>
+        <Animated.View style={[styles.botArm, { transform: [{ rotate: rotateR }] }]} />
+      </View>
+      <View style={styles.botBase} />
+    </Animated.View>
+  );
+};
+
   const pickImage = async () => {
-    if (attachments.length >= 4) {
-      Alert.alert('Limit Reached', 'You can only upload up to 4 images.');
-      return;
+    try {
+      console.log('Picking image...');
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      console.log('Picker result:', result);
+
+      if (!result.canceled) {
+        const newAssets = result.assets.map(asset => ({
+          id: Math.random().toString(36).substr(2, 9),
+          uri: asset.uri,
+          type: 'image'
+        }));
+        setAttachments([...attachments, ...newAssets].slice(0, 4));
+      }
+    } catch (err) {
+      console.error('Pick Image Error:', err);
+      showAlert('PICK FAILED', 'Could not open your gallery. Check permissions!', 'error');
     }
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      setAttachments([...attachments, { uri: result.assets[0].uri, id: Date.now().toString() }]);
+  };
+
+  const pickVideo = async () => {
+    try {
+      console.log('Picking video...');
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'videos',
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      console.log('Video Picker result:', result);
+
+      if (!result.canceled) {
+        const newAssets = result.assets.map(asset => ({
+          id: Math.random().toString(36).substr(2, 9),
+          uri: asset.uri,
+          type: 'video'
+        }));
+        setAttachments([...attachments, ...newAssets].slice(0, 1)); // One video at a time
+      }
+    } catch (err) {
+      console.error('Pick Video Error:', err);
+      showAlert('PICK FAILED', 'Could not access your video vault!', 'error');
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        multiple: false
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        setAttachments([{
+          id: Math.random().toString(36).substr(2, 9),
+          uri: asset.uri,
+          name: asset.name,
+          type: 'document'
+        }]);
+      }
+    } catch (err) {
+      showAlert('PICK FAILED', 'We could not access your document vault. Check permissions!', 'error');
     }
   };
 
@@ -115,27 +270,40 @@ export default function SubmissionScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (submissionType === 'text' && !content.trim()) {
-      Alert.alert('Empty Entry', 'Please write something before submitting.');
+      showAlert('EMPTY ENTRY', 'A silent warrior cannot win. Write something before submitting!', 'warning');
       return;
     }
     if (submissionType !== 'text' && attachments.length === 0) {
-      Alert.alert('No Media', 'Please upload at least one file.');
+      showAlert('NO MEDIA', 'An arena requires proof! Upload at least one file.', 'warning');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await submissionService.create(challengeId, { 
-        content: submissionType === 'text' ? content : '',
-        attachmentUri: attachments[0]?.uri, // Using first one for now as per current API
-        type: submissionType,
-        isAnonymous
-      });
-      Alert.alert('Entry Received', 'Your submission has been received. Good luck!', [
-        { text: 'Done', onPress: () => navigation.goBack() }
-      ]);
+      if (submissionType === 'text') {
+        await submissionService.create(challengeId, { 
+          content,
+          type: 'text'
+        });
+      } else {
+        // Submit all attachments in parallel for better performance
+        const uploadPromises = attachments.map(asset => 
+          submissionService.create(challengeId, { 
+            content: '',
+            attachmentUri: asset.uri,
+            type: submissionType
+          })
+        );
+        await Promise.all(uploadPromises);
+      }
+      
+      setShowSuccessModal(true);
     } catch (err) {
-      Alert.alert('Submission Failed', 'Something went wrong. Please try again.');
+      console.error('Submission Error:', err);
+      const status = err.response?.status;
+      const serverData = err.response?.data;
+      const errorMsg = serverData?.message || serverData || err.message || 'The arena walls held strong. Please try conquering again.';
+      showAlert('SUBMISSION FAILED', `(Code: ${status}) ${errorMsg}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -158,43 +326,8 @@ export default function SubmissionScreen({ route, navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        {existingSubmission ? (
-          /* PREVIOUS SUBMISSION VIEW */
-          <View style={styles.submittedContainer}>
-            <View style={styles.submittedIconBox}>
-              <ShieldCheck size={48} color="#F97316" />
-            </View>
-            <Text style={styles.submittedTitle}>Submission Confirmed</Text>
-            <Text style={styles.submittedDesc}>You have already participated in this challenge. Your entry is being reviewed by the judges.</Text>
-            
-            <View style={styles.previewCard}>
-              <Text style={styles.previewLabel}>YOUR ENTRY</Text>
-              {existingSubmission.contentType === 'TEXT' || existingSubmission.type === 'text' ? (
-                <Text style={styles.previewText} numberOfLines={10}>{existingSubmission.textContent || existingSubmission.content}</Text>
-              ) : (
-                <View style={styles.previewMediaBox}>
-                  {(existingSubmission.contentUrl || existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri) ? (
-                    <Image 
-                      source={{ uri: existingSubmission.contentUrl || existingSubmission.secure_url || existingSubmission.url || existingSubmission.imageUrl || existingSubmission.attachmentUri }} 
-                      style={styles.previewImage} 
-                    />
-                  ) : (
-                    <View style={styles.previewMediaPlaceholder}>
-                      <ImageIcon size={32} color="rgba(249, 115, 22, 0.2)" />
-                      <Text style={styles.previewMediaText}>Media Entry</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity style={styles.backArenaBtn} onPress={() => navigation.goBack()}>
-              <Text style={styles.backArenaText}>Back to Arena</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* ACTIVE SUBMISSION FORM */
-          <View style={styles.formContainer}>
+        {/* ACTIVE SUBMISSION FORM */}
+        <View style={styles.formContainer}>
             
             {/* Step 1: Type Selector (Chips) */}
             <Text style={styles.formLabel}>What type of entry are you submitting?</Text>
@@ -202,6 +335,8 @@ export default function SubmissionScreen({ route, navigation }) {
               {[
                 { id: 'text', label: 'Text / Code', icon: FileText },
                 { id: 'image', label: 'Image', icon: ImageIcon },
+                { id: 'video', label: 'Video', icon: Video },
+                { id: 'document', label: 'Document', icon: File },
                 { id: 'audio', label: 'Audio', icon: Music }
               ].map(item => (
                 <TouchableOpacity 
@@ -222,7 +357,10 @@ export default function SubmissionScreen({ route, navigation }) {
             {/* Step 2: Dynamic Input Area */}
             <Animated.View style={[styles.inputWrapper, { opacity: fadeAnim }]}>
               <Text style={styles.inputTitle}>
-                {submissionType === 'text' ? 'Write your solution' : submissionType === 'image' ? 'Upload photos' : 'Attach audio'}
+                {submissionType === 'text' ? 'Write your solution' : 
+                 submissionType === 'image' ? 'Upload photos' : 
+                 submissionType === 'video' ? 'Upload video' :
+                 submissionType === 'document' ? 'Attach documents' : 'Attach audio'}
               </Text>
               
               {submissionType === 'text' ? (
@@ -258,9 +396,54 @@ export default function SubmissionScreen({ route, navigation }) {
                   </ScrollView>
                   <Text style={styles.uploadHelper}>Support JPG, PNG, WEBP (Max 10MB)</Text>
                 </View>
+              ) : submissionType === 'video' ? (
+                <View style={styles.imageSection}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScroll}>
+                    {attachments.map(vid => (
+                      <View key={vid.id} style={styles.imageThumbBox}>
+                        <View style={[styles.imageThumb, { backgroundColor: '#1F2937', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Play size={32} color="#FFF" />
+                        </View>
+                        <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeAttachment(vid.id)}>
+                          <X size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {attachments.length < 1 && (
+                      <TouchableOpacity style={styles.addImgBtn} onPress={pickVideo}>
+                        <Video size={24} color="#9CA3AF" />
+                        <Text style={styles.addImgText}>Add Video</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                  <Text style={styles.uploadHelper}>Support MP4, MOV (Max 50MB)</Text>
+                </View>
+              ) : submissionType === 'document' ? (
+                <View style={styles.imageSection}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScroll}>
+                    {attachments.map(doc => (
+                      <View key={doc.id} style={styles.imageThumbBox}>
+                        <View style={[styles.imageThumb, { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', padding: 10 }]}>
+                          <FileText size={32} color="#F97316" />
+                          <Text style={{ fontSize: 8, color: '#6B7280', marginTop: 4, textAlign: 'center' }} numberOfLines={2}>{doc.name}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeAttachment(doc.id)}>
+                          <X size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {attachments.length < 1 && (
+                      <TouchableOpacity style={styles.addImgBtn} onPress={pickDocument}>
+                        <File size={24} color="#9CA3AF" />
+                        <Text style={styles.addImgText}>Select File</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                  <Text style={styles.uploadHelper}>Support PDF, DOC, DOCX (Max 20MB)</Text>
+                </View>
               ) : (
                 <View style={styles.audioSection}>
-                  <TouchableOpacity style={styles.audioPicker} onPress={() => Alert.alert('Peerly', 'Select audio file from your device')}>
+                  <TouchableOpacity style={styles.audioPicker} onPress={() => showAlert('AUDIO ARENA', 'Audio selection is coming soon to this arena!', 'info')}>
                     <Music size={32} color="#9CA3AF" />
                     <Text style={styles.audioPickerText}>Choose Audio File</Text>
                   </TouchableOpacity>
@@ -304,26 +487,57 @@ export default function SubmissionScreen({ route, navigation }) {
               <View style={styles.rulesList}>
                 <View style={styles.ruleItem}>
                   <CheckCircle2 size={12} color="#F97316" />
-                  <Text style={styles.ruleText}>One unique submission allowed per challenge</Text>
+                  <Text style={styles.ruleText}>Multiple entries are encouraged! Submit as many as you like.</Text>
                 </View>
                 <View style={styles.ruleItem}>
                   <CheckCircle2 size={12} color="#F97316" />
-                  <Text style={styles.ruleText}>Entries cannot be modified after final submission</Text>
+                  <Text style={styles.ruleText}>Entries cannot be modified after final submission.</Text>
                 </View>
                 <View style={styles.ruleItem}>
                   <CheckCircle2 size={12} color="#F97316" />
-                  <Text style={styles.ruleText}>Strict plagiarism checks are performed</Text>
+                  <Text style={styles.ruleText}>Every submission counts towards your profile XP.</Text>
                 </View>
               </View>
             </View>
           </View>
-        )}
+        </ScrollView>
 
-        <View style={{ height: 140 }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+        {/* SUCCESS MODAL (Donut Style) */}
+        <Modal visible={showSuccessModal} transparent animationType="slide">
+          <View style={styles.donutModalOverlay}>
+            <View style={styles.donutCard}>
+              <View style={styles.donutCardInner}>
+                <View style={styles.donutIllustrationBox}>
+                  <VictoryRobot />
+                </View>
+
+                <Text style={styles.donutHeadline}>Conquest!</Text>
+                <Text style={styles.donutSubtext}>Your entries are sealed in the arena.</Text>
+
+                <TouchableOpacity 
+                  style={styles.donutActionBtn} 
+                  onPress={() => {
+                    setShowSuccessModal(false);
+                    navigation.goBack();
+                  }}
+                >
+                  <Text style={styles.donutActionText}>CHECK FEED</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <ThemedAlert 
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+        />
+      </SafeAreaView>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF7ED' },
@@ -340,20 +554,35 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '900', color: '#1F2937' },
   headerSub: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginTop: 2 },
 
-  // Submitted State
-  submittedContainer: { padding: 32, alignItems: 'center' },
-  submittedIconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#FED7AA' },
-  submittedTitle: { fontSize: 24, fontWeight: '900', color: '#1F2937', marginBottom: 12 },
-  submittedDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  previewCard: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#FED7AA', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
-  previewLabel: { fontSize: 10, fontWeight: '900', color: '#F97316', letterSpacing: 1, marginBottom: 16 },
-  previewText: { fontSize: 14, color: '#1F2937', lineHeight: 22, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  previewMediaPlaceholder: { height: 120, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  previewMediaText: { fontSize: 12, fontWeight: '700', color: '#9CA3AF' },
-  previewMediaBox: { marginTop: 12, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#FED7AA' },
-  previewImage: { width: '100%', height: 160 },
-  backArenaBtn: { marginTop: 32, paddingHorizontal: 40, paddingVertical: 18, backgroundColor: '#F97316', borderRadius: 24, elevation: 4, shadowColor: '#F97316', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 6 } },
-  backArenaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  // Success State
+  successWrapper: { padding: 24, alignItems: 'center' },
+  congratsHeader: { alignItems: 'center', marginBottom: 32, marginTop: 20 },
+  sparkleBox: { width: 80, height: 80, borderRadius: 30, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center', marginBottom: 20, transform: [{ rotate: '12deg' }] },
+  successTitle: { fontSize: 32, fontWeight: '900', color: '#1F2937', letterSpacing: -1 },
+  successSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginTop: 12, paddingHorizontal: 20 },
+  
+  rewardCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1F2937', borderRadius: 24, padding: 20, width: '100%', marginBottom: 32, elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15 },
+  rewardInfo: { flex: 1 },
+  rewardLabel: { fontSize: 10, fontWeight: '900', color: '#9CA3AF', letterSpacing: 1, marginBottom: 4 },
+  rewardValue: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  rewardBadge: { backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  rewardXp: { fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
+
+  artifactCard: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 32, borderWidth: 2, borderColor: '#FED7AA', overflow: 'hidden', elevation: 4, shadowColor: '#F97316', shadowOpacity: 0.1, shadowRadius: 20 },
+  artifactHeader: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 10 },
+  artifactTitle: { fontSize: 11, fontWeight: '900', color: '#F97316', letterSpacing: 1.5, flex: 1 },
+  artifactDate: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
+  artifactContent: { padding: 24 },
+  artifactText: { fontSize: 15, color: '#1F2937', lineHeight: 24, fontWeight: '500', fontStyle: 'italic' },
+  artifactMediaWrapper: { borderRadius: 24, overflow: 'hidden', backgroundColor: '#F9FAFB' },
+  artifactImage: { width: '100%', height: 240 },
+  mediaOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', padding: 16 },
+  mediaTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(31, 41, 55, 0.8)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  mediaTagText: { fontSize: 10, fontWeight: '900', color: '#FFF', letterSpacing: 1 },
+
+  returnBtn: { width: '100%', height: 64, borderRadius: 24, overflow: 'hidden', marginTop: 40 },
+  returnGradient: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12 },
+  returnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 
   // Form Container
   formContainer: { padding: 24 },
@@ -411,4 +640,102 @@ const styles = StyleSheet.create({
   rulesList: { gap: 16 },
   ruleItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   ruleText: { fontSize: 12, color: '#6B7280', fontWeight: '600', lineHeight: 18, flex: 1 },
+
+  // Success Modal Styles
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(31, 41, 55, 0.8)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 24
+  },
+  successCard: { 
+    width: '100%', 
+    borderRadius: 32, 
+    overflow: 'hidden',
+    elevation: 20,
+    shadowColor: '#F97316',
+    shadowOpacity: 0.3,
+    shadowRadius: 30
+  },
+  successCardInner: { 
+    padding: 32, 
+    alignItems: 'center' 
+  },
+  iconCircle: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#FFF7ED', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#FED7AA'
+  },
+  modalTitle: { 
+    fontSize: 24, 
+    fontWeight: '900', 
+    color: '#1F2937', 
+    letterSpacing: -0.5,
+    marginBottom: 12
+  },
+  modalSubtitle: { 
+    fontSize: 15, 
+    color: '#6B7280', 
+    textAlign: 'center', 
+    lineHeight: 22, 
+    marginBottom: 24,
+    fontWeight: '500'
+  },
+  pointsBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8, 
+    backgroundColor: '#FEF3C7', 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 12,
+    marginBottom: 32
+  },
+  pointsText: { 
+    fontSize: 12, 
+    fontWeight: '900', 
+    color: '#B45309', 
+    letterSpacing: 1 
+  },
+  donutModalOverlay: { flex: 1, backgroundColor: 'rgba(31, 41, 55, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  donutCard: { 
+    width: '75%', 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 60,
+    borderBottomRightRadius: 60,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    elevation: 25, 
+    shadowColor: '#F97316', 
+    shadowOpacity: 0.3, 
+    shadowRadius: 30, 
+    borderWidth: 3, 
+    borderColor: '#F97316', 
+    overflow: 'hidden',
+    transform: [{ rotate: '-2deg' }]
+  },
+  donutCardInner: { padding: 24, alignItems: 'center' },
+  donutIllustrationBox: { height: 110, justifyContent: 'center', marginBottom: 15 },
+  donutHeadline: { fontSize: 24, fontWeight: '900', color: '#374151', textAlign: 'center', marginBottom: 6, letterSpacing: -0.5 },
+  donutSubtext: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, fontWeight: '500', lineHeight: 18 },
+  donutActionBtn: { width: '100%', height: 48, borderRadius: 12, borderWidth: 2, borderColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+  donutActionText: { color: '#F97316', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+
+  // Victory Bot (Donut Style)
+  victoryBotWrapper: { alignItems: 'center', justifyContent: 'center' },
+  botHead: { width: 70, height: 55, backgroundColor: '#F97316', borderRadius: 18, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  botEyes: { flexDirection: 'row', gap: 10, marginBottom: 5 },
+  botEye: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  botSmile: { width: 20, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)', marginTop: 2 },
+  botBodyWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginTop: -5, zIndex: 1 },
+  botMainBody: { width: 90, height: 70, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 4, borderColor: '#F97316', alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  botArm: { width: 14, height: 40, backgroundColor: '#EA580C', borderRadius: 8, marginTop: 15, marginHorizontal: -8 },
+  botBase: { width: 55, height: 10, backgroundColor: '#EA580C', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, marginTop: -5 },
 });

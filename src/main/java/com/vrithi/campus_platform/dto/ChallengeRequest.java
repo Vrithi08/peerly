@@ -24,6 +24,8 @@ public class ChallengeRequest {
     @Future(message = "Voting deadline must be in the future")
     private LocalDateTime votingDeadline;
 
+    private String imageUrl;
+
     // Getters and Setters
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -35,4 +37,6 @@ public class ChallengeRequest {
     public void setSubmissionDeadline(LocalDateTime submissionDeadline) { this.submissionDeadline = submissionDeadline; }
     public LocalDateTime getVotingDeadline() { return votingDeadline; }
     public void setVotingDeadline(LocalDateTime votingDeadline) { this.votingDeadline = votingDeadline; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -14,10 +14,15 @@ import {
   Animated,
   Image
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { helpService, uploadService } from '../services/api';
+import ThemedAlert from '../components/ThemedAlert';
 import { 
+  CheckCircle2, 
+  ChevronRight, 
+  Zap, 
+  Lightbulb,
   ArrowLeft, 
   ChevronDown, 
   AlertCircle, 
@@ -27,7 +32,6 @@ import {
   BookOpen,
   Check,
   Compass,
-  ImagePlus,
   X
 } from 'lucide-react-native';
 
@@ -60,61 +64,85 @@ const URGENCY_LEVELS = [
   },
 ];
 
+
+// --- Idea Bot (Donut Style) ---
+const IdeaBot = () => {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Bobbing motion
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: -12, duration: 1500, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Pulse lightbulb
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.25, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.ideaBotWrapper, { transform: [{ translateY: floatAnim }] }]}>
+      <View style={styles.botHead}>
+        <View style={styles.botEyes}>
+          <View style={styles.botEye} />
+          <View style={styles.botEye} />
+        </View>
+      </View>
+      <View style={styles.botBodyWrapper}>
+        <View style={[styles.botArm, { transform: [{ rotate: '45deg' }] }]} />
+        <View style={styles.botMainBody}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <Lightbulb size={40} color="#F97316" fill="#FEF3C7" strokeWidth={2} />
+          </Animated.View>
+        </View>
+        <View style={[styles.botArm, { transform: [{ rotate: '-20deg' }] }]} />
+      </View>
+      <View style={styles.botBase} />
+    </Animated.View>
+  );
+};
+
 export default function CreateHelpPostScreen({ navigation }) {
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
-  const [mediaUri, setMediaUri] = useState(null);
   const [urgency, setUrgency] = useState('CHILL');
   const [loading, setLoading] = useState(false);
   const [showSubjects, setShowSubjects] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const successScale = useRef(new Animated.Value(0)).current;
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setMediaUri(result.assets[0].uri);
-    }
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
   };
 
   const handlePost = async () => {
     if (!subject || !topic || !description) {
-      Alert.alert('Missing Info', 'Please fill in all fields before posting.');
+      showAlert('MISSING INFO', 'Please provide a subject, topic, and description so peers can help you effectively.', 'warning');
       return;
     }
 
     setLoading(true);
     try {
-      let finalMediaUrl = null;
-      if (mediaUri) {
-        const uploadRes = await uploadService.uploadFile({ uri: mediaUri });
-        finalMediaUrl = uploadRes.url;
-      }
-
       await helpService.createPost({
         subject,
         topic,
         description,
-        urgency,
-        mediaUrl: finalMediaUrl
+        urgency
       });
-      setShowSuccess(true);
-      Animated.spring(successScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true
-      }).start();
+      setLoading(false);
+      setShowSuccessModal(true);
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to post your question. Please try again.');
-    } finally {
+      showAlert('POST FAILED', 'Your question could not reach the board. Check your connection and try again.', 'error');
       setLoading(false);
     }
   };
@@ -135,7 +163,6 @@ export default function CreateHelpPostScreen({ navigation }) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           
-          {/* Stylish Subject Dropdown */}
           <Text style={styles.label}>Subject</Text>
           <View style={styles.stylishDropdownContainer}>
             <TouchableOpacity 
@@ -187,7 +214,6 @@ export default function CreateHelpPostScreen({ navigation }) {
             )}
           </View>
 
-          {/* Topic Input */}
           <Text style={styles.label}>Topic</Text>
           <TextInput 
             style={styles.input}
@@ -197,20 +223,7 @@ export default function CreateHelpPostScreen({ navigation }) {
             onChangeText={setTopic}
           />
 
-          {/* Description */}
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Description</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={styles.codeBadge}>
-                <Code size={12} color="#F97316" />
-                <Text style={styles.codeBadgeText}>Snippets supported</Text>
-              </View>
-              <TouchableOpacity style={styles.attachBtn} onPress={pickImage}>
-                <ImagePlus size={14} color="#10B981" />
-                <Text style={styles.attachBtnText}>Attach Image</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Text style={styles.label}>Description</Text>
           <TextInput 
             style={[styles.input, styles.textArea]}
             placeholder="Describe your doubt in detail. Be specific!"
@@ -222,16 +235,6 @@ export default function CreateHelpPostScreen({ navigation }) {
             onChangeText={setDescription}
           />
 
-          {mediaUri && (
-            <View style={styles.imagePreviewContainer}>
-              <Image source={{ uri: mediaUri }} style={styles.imagePreview} />
-              <TouchableOpacity style={styles.removeImageBtn} onPress={() => setMediaUri(null)}>
-                <X size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Urgency Selector */}
           <Text style={styles.label}>Urgency</Text>
           <View style={styles.urgencyContainer}>
             {URGENCY_LEVELS.map((level) => (
@@ -267,29 +270,42 @@ export default function CreateHelpPostScreen({ navigation }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Custom Success Modal */}
-      <Modal
-        visible={showSuccess}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <Animated.View style={[styles.successBox, { transform: [{ scale: successScale }] }]}>
-            <View style={styles.successIconBox}>
-              <Check size={40} color="#FFFFFF" strokeWidth={3} />
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.type === 'success') {
+            navigation.goBack();
+          }
+        }}
+      />
+
+      {/* SUCCESS MODAL (Donut Reference Style) */}
+      <Modal visible={showSuccessModal} transparent animationType="slide">
+        <View style={styles.donutModalOverlay}>
+          <View style={styles.donutCard}>
+            <View style={styles.donutCardInner}>
+              <View style={styles.donutIllustrationBox}>
+                <IdeaBot />
+              </View>
+
+              <Text style={styles.donutHeadline}>Synced!</Text>
+              <Text style={styles.donutSubtext}>Your question is on the campus board.</Text>
+
+              <TouchableOpacity 
+                style={styles.donutActionBtn} 
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.donutActionText}>CHECK FEED</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.successTitle}>Posted Successfully!</Text>
-            <Text style={styles.successDesc}>Your question is now live on the campus board. Peers will be notified soon!</Text>
-            <TouchableOpacity 
-              style={styles.successBtn}
-              onPress={() => {
-                setShowSuccess(false);
-                navigation.goBack();
-              }}
-            >
-              <Text style={styles.successBtnText}>Back to Board</Text>
-            </TouchableOpacity>
-          </Animated.View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -311,7 +327,6 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 24 },
   
   label: { fontSize: 15, fontWeight: '800', color: '#1F2937', marginBottom: 8, marginTop: 16 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
   
   stylishDropdownContainer: {
     backgroundColor: '#FFFFFF',
@@ -399,16 +414,6 @@ const styles = StyleSheet.create({
   },
   textArea: { height: 150, paddingTop: 16, paddingBottom: 16 },
   
-  codeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF7ED', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#FED7AA' },
-  codeBadgeText: { fontSize: 11, fontWeight: '800', color: '#F97316' },
-  
-  attachBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#6EE7B7' },
-  attachBtnText: { fontSize: 11, fontWeight: '800', color: '#10B981' },
-
-  imagePreviewContainer: { marginTop: 12, position: 'relative', borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: '#FED7AA' },
-  imagePreview: { width: '100%', height: 200, resizeMode: 'cover' },
-  removeImageBtn: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(31, 41, 55, 0.7)', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-
   urgencyContainer: { flexDirection: 'row', gap: 10, marginTop: 4 },
   urgencyCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', position: 'relative' },
   urgencyLabel: { fontSize: 11, fontWeight: '900', marginTop: 8 },
@@ -430,64 +435,38 @@ const styles = StyleSheet.create({
   },
   postBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 
-  // Success Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(31, 41, 55, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24
+  // Idea Bot (Donut Style)
+  ideaBotWrapper: { alignItems: 'center', justifyContent: 'center' },
+  botHead: { width: 70, height: 50, backgroundColor: '#F97316', borderRadius: 20, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  botEyes: { flexDirection: 'row', gap: 12, marginBottom: 6 },
+  botEye: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  botBodyWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginTop: -5, zIndex: 1 },
+  botMainBody: { width: 90, height: 75, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 5, borderColor: '#F97316', alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  botArm: { width: 14, height: 40, backgroundColor: '#EA580C', borderRadius: 8, marginTop: 15, marginHorizontal: -8 },
+  botBase: { width: 55, height: 10, backgroundColor: '#EA580C', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginTop: -5 },
+
+  // Donut Modal Styles
+  donutModalOverlay: { flex: 1, backgroundColor: 'rgba(31, 41, 55, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  donutCard: { 
+    width: '75%', 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 60,
+    borderBottomRightRadius: 60,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    elevation: 25, 
+    shadowColor: '#F97316', 
+    shadowOpacity: 0.3, 
+    shadowRadius: 30, 
+    borderWidth: 3, 
+    borderColor: '#F97316', 
+    overflow: 'hidden',
+    transform: [{ rotate: '-2deg' }]
   },
-  successBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    padding: 32,
-    width: '100%',
-    alignItems: 'center',
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 }
-  },
-  successIconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F97316',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#F97316',
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    elevation: 8
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#1F2937',
-    marginBottom: 12
-  },
-  successDesc: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-    fontWeight: '600'
-  },
-  successBtn: {
-    backgroundColor: '#1F2937',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 18,
-    width: '100%',
-    alignItems: 'center'
-  },
-  successBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800'
-  }
+  donutCardInner: { padding: 24, alignItems: 'center' },
+  donutIllustrationBox: { height: 120, justifyContent: 'center', marginBottom: 15 },
+  donutHeadline: { fontSize: 24, fontWeight: '900', color: '#374151', textAlign: 'center', marginBottom: 6, letterSpacing: -0.5 },
+  donutSubtext: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, fontWeight: '500', lineHeight: 18 },
+  donutActionBtn: { width: '100%', height: 48, borderRadius: 12, borderWidth: 2, borderColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+  donutActionText: { color: '#F97316', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
 });

@@ -38,20 +38,26 @@ public class SubmissionService {
             throw new RuntimeException("Challenge is not open for submissions");
         }
 
-        if (submissionRepository.existsByChallengeIdAndUserId(challengeId, user.getId())) {
-            throw new RuntimeException("You have already submitted to this challenge");
-        }
-
         String fileUrl = cloudinaryService.uploadFile(file);
-        String contentType = file.getContentType();
-        ContentType type = contentType != null && contentType.startsWith("image")
-                ? ContentType.IMAGE : ContentType.AUDIO;
+        String mimeType = file.getContentType();
+        ContentType type = ContentType.DOCUMENT; // Default
+
+        if (mimeType != null) {
+            if (mimeType.startsWith("image")) type = ContentType.IMAGE;
+            else if (mimeType.startsWith("audio")) type = ContentType.AUDIO;
+            else if (mimeType.startsWith("video")) type = ContentType.VIDEO;
+            else if (mimeType.contains("pdf") || mimeType.contains("word") || mimeType.contains("document") || mimeType.contains("zip")) type = ContentType.DOCUMENT;
+        }
 
         Submission submission = new Submission();
         submission.setChallenge(challenge);
         submission.setUser(user);
         submission.setContentUrl(fileUrl);
         submission.setContentType(type);
+
+        // Award participation points
+        user.setChallengePoints(user.getChallengePoints() + 5);
+        userRepository.save(user);
 
         return mapToResponse(submissionRepository.save(submission));
     }
@@ -69,15 +75,15 @@ public class SubmissionService {
             throw new RuntimeException("Challenge is not open for submissions");
         }
 
-        if (submissionRepository.existsByChallengeIdAndUserId(challengeId, user.getId())) {
-            throw new RuntimeException("You have already submitted to this challenge");
-        }
-
         Submission submission = new Submission();
         submission.setChallenge(challenge);
         submission.setUser(user);
         submission.setTextContent(textContent);
         submission.setContentType(ContentType.TEXT);
+
+        // Award participation points
+        user.setChallengePoints(user.getChallengePoints() + 5);
+        userRepository.save(user);
 
         return mapToResponse(submissionRepository.save(submission));
     }

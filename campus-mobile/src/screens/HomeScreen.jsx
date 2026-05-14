@@ -11,7 +11,8 @@ import {
   ScrollView,
   Platform,
   Animated,
-  StatusBar
+  StatusBar,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { challengeService, leaderboardService } from '../services/api';
@@ -30,7 +31,10 @@ import {
   Award,
   BookOpen,
   LogOut,
-  HelpCircle
+  HelpCircle,
+  CloudRain,
+  Frown,
+  Meh
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -138,11 +142,72 @@ const WavingRobot = () => {
   );
 };
 
+// --- Sad Ghost Component ---
+const SadGhost = () => {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const tearAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Floating bobbing motion
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Tear drop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tearAnim, { toValue: 1, duration: 2000, delay: 500, useNativeDriver: true }),
+        Animated.timing(tearAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const translateY = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -15]
+  });
+
+  const tearY = tearAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 25]
+  });
+
+  const tearOpacity = tearAnim.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 1, 1, 0]
+  });
+
+  return (
+    <View style={styles.ghostWrapper}>
+      <Animated.View style={[styles.ghostBody, { transform: [{ translateY }] }]}>
+        <View style={styles.ghostEyes}>
+          <View style={styles.ghostEyeBox}>
+            <View style={styles.ghostEye} />
+            <Animated.View style={[styles.ghostTear, { transform: [{ translateY: tearY }], opacity: tearOpacity }]} />
+          </View>
+          <View style={styles.ghostEye} />
+        </View>
+        <View style={styles.ghostMouth} />
+        <View style={styles.ghostSkirt}>
+          <View style={styles.ghostSkirtWave} />
+          <View style={styles.ghostSkirtWave} />
+          <View style={styles.ghostSkirtWave} />
+        </View>
+      </Animated.View>
+      <View style={styles.ghostShadow} />
+    </View>
+  );
+};
+
 export default function HomeScreen({ navigation, onLogout }) {
   const [trending, setTrending] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('Peer');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -187,7 +252,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         <View style={styles.navContent}>
           <Text style={styles.logoText}>Peer<Text style={styles.accentText}>ly</Text></Text>
           <View style={styles.navRight}>
-            <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={() => setShowLogoutModal(true)}>
               <LogOut size={20} color="#F97316" />
             </TouchableOpacity>
           </View>
@@ -321,10 +386,14 @@ export default function HomeScreen({ navigation, onLogout }) {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Live Challenges</Text>
-              <Text style={styles.sectionSubLeft}>Solve or post challenges for your fellow students.</Text>
+              <Text style={styles.sectionSubLeft}>Join the arena and compete.</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('ChallengesTab')}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('ChallengesTab')}
+              style={styles.viewAllContainer}
+            >
               <Text style={styles.viewAllText}>View All</Text>
+              <ArrowRight size={16} color="#F97316" strokeWidth={3} />
             </TouchableOpacity>
           </View>
           
@@ -449,6 +518,55 @@ export default function HomeScreen({ navigation, onLogout }) {
         </View>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Sad Logout Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.sadModalOverlay}>
+          <View style={styles.sadModalContent}>
+            <LinearGradient
+              colors={['#F9FAFB', '#FFFFFF']}
+              style={styles.premiumModalInner}
+            >
+              <View style={styles.sadIconContainer}>
+                <View style={styles.rainCircle}>
+                  <CloudRain size={40} color="rgba(249, 115, 22, 0.2)" />
+                </View>
+                <SadGhost />
+              </View>
+              
+              <Text style={styles.sadTitle}>Leaving already?</Text>
+              <Text style={styles.sadMessage}>
+                The arena will feel a little emptier without you. Are you sure you want to exit?
+              </Text>
+
+              <View style={styles.sadActionBox}>
+                <TouchableOpacity 
+                  style={styles.stayBtn} 
+                  onPress={() => setShowLogoutModal(false)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient colors={['#F97316', '#EA580C']} style={styles.premiumActionGradient}>
+                    <Text style={styles.stayBtnText}>Wait, I'll stay!</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.sadLogoutBtn} 
+                  onPress={onLogout}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.sadLogoutText}>Confirm Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -509,6 +627,107 @@ const styles = StyleSheet.create({
   robotRightArm: { width: 24, height: 60, backgroundColor: '#111827', borderRadius: 12 },
   
   robotBase: { width: 60, height: 20, backgroundColor: '#111827', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, marginTop: -5, zIndex: 0 },
+  
+  tear: {
+    position: 'absolute',
+    top: 10,
+    left: 4,
+    width: 6,
+    height: 8,
+    backgroundColor: '#60A5FA',
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    borderTopLeftRadius: 1,
+    borderTopRightRadius: 1,
+  },
+
+  // Sad Modal Styles
+  sadModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(31, 41, 55, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24
+  },
+  sadModalContent: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    overflow: 'hidden',
+    elevation: 25,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 }
+  },
+  premiumModalInner: {
+    padding: 32,
+    alignItems: 'center'
+  },
+  sadIconContainer: {
+    marginBottom: 24,
+    alignItems: 'center',
+    position: 'relative',
+    height: 180,
+    justifyContent: 'center'
+  },
+  rainCircle: {
+    position: 'absolute',
+    top: 0,
+    opacity: 0.5,
+    transform: [{ scale: 2 }]
+  },
+  sadTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
+  sadMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+    fontWeight: '500',
+    paddingHorizontal: 10
+  },
+  sadActionBox: {
+    width: '100%',
+    gap: 12
+  },
+  stayBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#F97316',
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  premiumActionGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  stayBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  sadLogoutBtn: {
+    width: '100%',
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  sadLogoutText: {
+    color: '#6B7280',
+    fontSize: 15,
+    fontWeight: '700'
+  },
 
   // 2. Stats Section
   statsSection: { paddingHorizontal: 24, marginBottom: 40 },
@@ -526,7 +745,8 @@ const styles = StyleSheet.create({
   sectionTitleCentered: { fontSize: 28, fontWeight: '900', color: '#1F2937', textAlign: 'center', marginBottom: 40 },
   sectionSub: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
   sectionSubLeft: { fontSize: 14, color: '#6B7280', marginTop: 4 },
-  viewAllText: { fontSize: 14, color: '#F97316', fontWeight: '800' },
+  viewAllContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF7ED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FED7AA' },
+  viewAllText: { fontSize: 13, color: '#F97316', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // 3. Features Section (2-Column Grid)
   featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
@@ -596,4 +816,119 @@ const styles = StyleSheet.create({
   footerLink: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
   footerDivider: { width: '100%', height: 1, backgroundColor: '#E5E7EB', marginBottom: 24 },
   copyright: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
+
+  // --- Sad Modal & Robot Styles ---
+  // Ghost Styles
+  ghostWrapper: { alignItems: 'center', width: 100, height: 140, justifyContent: 'center' },
+  ghostBody: {
+    width: 70,
+    height: 80,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    borderBottomLeftRadius: 5,
+    borderBottomRightRadius: 5,
+    padding: 15,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    borderWidth: 2,
+    borderColor: '#F3F4F6'
+  },
+  ghostEyes: { flexDirection: 'row', gap: 15, marginTop: 10 },
+  ghostEyeBox: { position: 'relative' },
+  ghostEye: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#374151' },
+  ghostTear: { width: 4, height: 6, backgroundColor: '#60A5FA', borderBottomLeftRadius: 2, borderBottomRightRadius: 2, position: 'absolute', top: 8, left: 2 },
+  ghostMouth: { width: 10, height: 6, borderRadius: 5, borderWidth: 2, borderColor: '#374151', marginTop: 12, borderTopWidth: 0 },
+  ghostSkirt: { flexDirection: 'row', position: 'absolute', bottom: -10, left: 0, right: 0, justifyContent: 'center' },
+  ghostSkirtWave: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', marginTop: -10, borderWidth: 2, borderColor: '#F3F4F6' },
+  ghostShadow: { width: 50, height: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5, marginTop: 20 },
+  sadModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(31, 41, 55, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24
+  },
+  sadModalContent: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    overflow: 'hidden',
+    elevation: 25,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 }
+  },
+  premiumModalInner: {
+    padding: 32,
+    alignItems: 'center'
+  },
+  sadIconContainer: {
+    marginBottom: 24,
+    alignItems: 'center',
+    position: 'relative',
+    height: 180,
+    justifyContent: 'center'
+  },
+  rainCircle: {
+    position: 'absolute',
+    top: 0,
+    opacity: 0.5,
+    transform: [{ scale: 2 }]
+  },
+  sadTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
+  sadMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+    fontWeight: '500',
+    paddingHorizontal: 10
+  },
+  sadActionBox: {
+    width: '100%',
+    gap: 12
+  },
+  stayBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#F97316',
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  premiumActionGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  stayBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  sadLogoutBtn: {
+    width: '100%',
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  sadLogoutText: {
+    color: '#6B7280',
+    fontSize: 15,
+    fontWeight: '700'
+  },
 });

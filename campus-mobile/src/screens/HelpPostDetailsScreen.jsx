@@ -16,6 +16,7 @@ import {
   Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { helpService, userService, uploadService, api } from '../services/api';
@@ -34,12 +35,15 @@ import {
   Sparkles,
   Bookmark,
   Flag,
-  Image as ImageIcon,
+  ImageIcon,
   Paperclip,
   FileText,
-  X as CloseIcon
+  X as CloseIcon,
+  Bot,
+  Info
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ThemedAlert from '../components/ThemedAlert';
 
 export default function HelpPostDetailsScreen({ route, navigation }) {
   const { postId } = route.params;
@@ -53,8 +57,13 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [toast, setToast] = useState({ visible: false, message: '' });
-  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+  const [confirmModal, setConfirmModal] = useState({ visible: false, replyId: null });
+  
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   useEffect(() => {
     fetchPost();
@@ -75,7 +84,7 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
       setPost(data);
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to load post details.');
+      showAlert('SYNC ERROR', 'The discussion thread could not be retrieved. Check your signal!', 'error');
     } finally {
       setLoading(false);
     }
@@ -135,33 +144,27 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
       showToastMessage('Reply posted! ✨');
     } catch (err) {
       console.error('Post Reply Error:', err);
-      const msg = err.response?.data?.message || err.message || 'Network error';
-      showToastMessage(`Error: ${msg}`);
+      showAlert('REPLY FAILED', 'Your wisdom was lost in the void. Try posting again!', 'error');
     } finally {
       setSending(false);
     }
   };
 
-  const handleAcceptAnswer = async (replyId) => {
-    Alert.alert(
-      'Accept Best Answer?',
-      'Are you sure you want to mark this reply as the best answer and resolve this discussion?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Accept', 
-          onPress: async () => {
-            try {
-              await helpService.acceptReply(replyId);
-              fetchPost();
-            } catch (err) {
-              console.error(err);
-              Alert.alert('Error', 'Failed to accept answer.');
-            }
-          }
-        }
-      ]
-    );
+  const handleAcceptAnswer = (replyId) => {
+    setConfirmModal({ visible: true, replyId });
+  };
+
+  const confirmAcceptAnswer = async () => {
+    const replyId = confirmModal.replyId;
+    setConfirmModal({ visible: false, replyId: null });
+    try {
+      await helpService.acceptReply(replyId);
+      fetchPost();
+      showToastMessage('Best answer accepted! 🏆');
+    } catch (err) {
+      console.error(err);
+      showAlert('ACTION FAILED', 'Could not accept this answer at the moment.', 'error');
+    }
   };
 
   const getUrgencyConfig = (urgency, resolved) => {
@@ -175,12 +178,7 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
   };
 
   const showToastMessage = (message) => {
-    setToast({ visible: true, message });
-    Animated.sequence([
-      Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.delay(2000),
-      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
-    ]).start(() => setToast({ visible: false, message: '' }));
+    showAlert('SUCCESS', message, 'success');
   };
 
   const handleToggleBookmark = async () => {
@@ -416,7 +414,7 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
               style={styles.menuItem}
               onPress={() => { 
                 setShowMenu(false); 
-                Alert.alert('Reported', 'Thank you for your feedback.');
+                showAlert('REPORT RECEIVED', 'Our moderation bots are investigating. Thank you for keeping the campus safe!', 'info');
               }}
             >
               <Flag size={18} color="#4B5563" />
@@ -426,12 +424,47 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Floating Toast Notification */}
-      {toast.visible && (
-        <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
-          <Text style={styles.toastText}>{toast.message}</Text>
-        </Animated.View>
-      )}
+      {/* Custom Confirmation Modal */}
+      <Modal
+        visible={confirmModal.visible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setConfirmModal({ visible: false, replyId: null })}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIconBox}>
+              <Sparkles size={32} color="#F97316" fill="#F97316" fillOpacity={0.2} />
+            </View>
+            <Text style={styles.confirmTitle}>RECOGNIZE BEST ANSWER?</Text>
+            <Text style={styles.confirmDesc}>This will resolve the discussion and reward this peer for their contribution. This action is permanent.</Text>
+            
+            <View style={styles.confirmActions}>
+              <TouchableOpacity 
+                style={styles.cancelAction} 
+                onPress={() => setConfirmModal({ visible: false, replyId: null })}
+              >
+                <Text style={styles.cancelActionText}>Not Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.acceptAction} 
+                onPress={confirmAcceptAnswer}
+              >
+              <Text style={styles.acceptActionText}>Accept & Resolve</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
+
     </SafeAreaView>
   );
 }
@@ -652,5 +685,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F97316',
     maxWidth: 200
-  }
+  },
+
+  // Confirmation Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(31, 41, 55, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  confirmCard: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 32, padding: 32, alignItems: 'center', elevation: 20, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20 },
+  confirmIconBox: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  confirmTitle: { fontSize: 18, fontWeight: '900', color: '#1F2937', letterSpacing: 0.5, textAlign: 'center' },
+  confirmDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginTop: 12, marginBottom: 32 },
+  confirmActions: { flexDirection: 'row', gap: 12, width: '100%' },
+  cancelAction: { flex: 1, height: 56, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+  cancelActionText: { fontSize: 14, fontWeight: '800', color: '#6B7280' },
+  acceptAction: { flex: 1.5, height: 56, borderRadius: 16, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+  acceptActionText: { fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
 });

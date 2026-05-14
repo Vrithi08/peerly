@@ -13,6 +13,7 @@ import {
   Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { 
   ArrowLeft, 
   User, 
@@ -34,6 +35,7 @@ import {
   Award
 } from 'lucide-react-native';
 import { userService } from '../services/api';
+import ThemedAlert from '../components/ThemedAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +43,11 @@ export default function SettingsScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   // Form States
   const [name, setName] = useState('');
@@ -96,25 +103,17 @@ export default function SettingsScreen({ navigation }) {
       };
       const updatedUser = await userService.updateProfile(payload);
       setUser(updatedUser);
-      Alert.alert('Success', 'Account settings updated! ✨');
+      showAlert('SETTINGS SAVED', 'Your campus profile has been synchronized with the latest updates! ✨', 'success');
     } catch (err) {
       console.error('Update Profile Error:', err);
-      const msg = err.response?.data?.message || err.message || 'Check your connection';
-      Alert.alert('Save Failed', `Details: ${msg}`);
+      showAlert('SAVE FAILED', 'The server could not record your changes. Check your connection.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you absolutely sure? This will permanently remove all your progress, points, and discussions. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete Permanently', style: 'destructive', onPress: () => Alert.alert('Request Sent', 'Your account deletion request has been submitted.') }
-      ]
-    );
+    showAlert('DANGER ZONE', 'Are you absolutely sure? This will permanently remove all your progress and data. Contact support to proceed with deletion.', 'error');
   };
 
   const SettingSection = ({ title, children }) => (
@@ -235,7 +234,7 @@ export default function SettingsScreen({ navigation }) {
             </View>
           </View>
 
-          <SettingItem icon={Lock} label="Change Password" value="••••••••" onPress={() => Alert.alert('Security', 'Password reset email sent!')} />
+          <SettingItem icon={Lock} label="Change Password" value="••••••••" onPress={() => showAlert('SECURITY', 'A secure password reset link has been dispatched to your email!', 'info')} />
           <SettingItem icon={Mail} label="Email" value={user?.email} showBorder={false} />
         </SettingSection>
 
@@ -310,12 +309,17 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </SettingSection>
 
-        <View style={styles.footer}>
-          <Text style={styles.versionText}>Student Sync v1.2.0</Text>
-          <Text style={styles.copyrightText}>Handcrafted for Campus Communities 🎓</Text>
         </View>
 
       </ScrollView>
+
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </SafeAreaView>
   );
 }

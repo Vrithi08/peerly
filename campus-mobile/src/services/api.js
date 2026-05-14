@@ -4,10 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const API_BASE_URL = Platform.OS === 'web' 
   ? 'http://localhost:8080/api' 
-  : 'http://192.168.1.7:8080/api';
+  : 'http://192.168.1.6:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -113,21 +114,43 @@ export const submissionService = {
   },
   create: async (challengeId, data) => {
     if (data.type === 'text') {
-      const formData = new FormData();
-      formData.append('content', data.content);
-      const response = await api.post(`/submissions/${challengeId}/text`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await api.post(`/submissions/${challengeId}/text`, null, {
+        params: { content: data.content }
       });
       return response.data;
     } else {
+      const getMimeType = (type) => {
+        switch(type) {
+          case 'audio': return 'audio/mpeg';
+          case 'video': return 'video/mp4';
+          case 'image': return 'image/jpeg';
+          default: return 'application/pdf';
+        }
+      };
+      const getFileName = (type) => {
+        switch(type) {
+          case 'audio': return 'audio.mp3';
+          case 'video': return 'video.mp4';
+          case 'image': return 'upload.jpg';
+          default: return 'document.pdf';
+        }
+      };
+
       const formData = new FormData();
+      
+      // On Android, the URI might need careful handling
+      const fileUri = Platform.OS === 'android' ? data.attachmentUri : data.attachmentUri.replace('file://', '');
+      
       formData.append('file', {
-        uri: data.attachmentUri,
-        type: data.type === 'audio' ? 'audio/mpeg' : 'image/jpeg',
-        name: data.type === 'audio' ? 'audio.mp3' : 'upload.jpg',
+        uri: fileUri,
+        type: getMimeType(data.type),
+        name: getFileName(data.type),
       });
+
       const response = await api.post(`/submissions/${challengeId}/file`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Accept': 'application/json'
+        },
       });
       return response.data;
     }

@@ -14,6 +14,7 @@ import {
   Animated 
 } from 'react-native';
 import { authService } from '../services/api';
+import ThemedAlert from '../components/ThemedAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Mail, 
@@ -70,6 +71,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   const slideUpAnim = useRef(new Animated.Value(100)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -92,12 +98,12 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Missing Info', 'Please enter both email and password');
+      showAlert('MISSING INFO', 'Enter your credentials to enter the arena!', 'warning');
       return;
     }
     
     if (!email.toLowerCase().endsWith('@cb.students.amrita.edu')) {
-      Alert.alert('Access Denied', 'Only Amrita College students (@cb.students.amrita.edu) can log in.');
+      showAlert('ACCESS DENIED', 'This arena is exclusive to Amrita students! Use your university email.', 'error');
       return;
     }
     setLoading(true);
@@ -105,8 +111,8 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       await authService.login(email, password);
       onLoginSuccess();
     } catch (error) {
-      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'Invalid credentials.');
-      Alert.alert('Login Failed', msg);
+      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'The gates are locked. Check your credentials and try again!');
+      showAlert('LOGIN FAILED', msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -200,6 +206,14 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
+
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </View>
   );
 }

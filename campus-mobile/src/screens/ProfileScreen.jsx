@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { challengeService, userService, helpService } from '../services/api';
 import { 
   Settings, 
@@ -95,6 +96,66 @@ const DynamicAvatar = ({ icon: Icon, color, size = 100 }) => {
   );
 };
 
+// --- Sad Ghost Component ---
+const SadGhost = () => {
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const tearAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Floating bobbing motion
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Tear drop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tearAnim, { toValue: 1, duration: 2000, delay: 500, useNativeDriver: true }),
+        Animated.timing(tearAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const translateY = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -15]
+  });
+
+  const tearY = tearAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 25]
+  });
+
+  const tearOpacity = tearAnim.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 1, 1, 0]
+  });
+
+  return (
+    <View style={styles.ghostWrapper}>
+      <Animated.View style={[styles.ghostBody, { transform: [{ translateY }] }]}>
+        <View style={styles.ghostEyes}>
+          <View style={styles.ghostEyeBox}>
+            <View style={styles.ghostEye} />
+            <Animated.View style={[styles.ghostTear, { transform: [{ translateY: tearY }], opacity: tearOpacity }]} />
+          </View>
+          <View style={styles.ghostEye} />
+        </View>
+        <View style={styles.ghostMouth} />
+        <View style={styles.ghostSkirt}>
+          <View style={styles.ghostSkirtWave} />
+          <View style={styles.ghostSkirtWave} />
+          <View style={styles.ghostSkirtWave} />
+        </View>
+      </Animated.View>
+      <View style={styles.ghostShadow} />
+    </View>
+  );
+};
+
 export default function ProfileScreen({ navigation, onLogout }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +163,11 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [savedPosts, setSavedPosts] = useState([]);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   useEffect(() => {
     loadUserData();
@@ -160,7 +226,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -169,7 +235,11 @@ export default function ProfileScreen({ navigation, onLogout }) {
     if (!result.canceled) {
       setIsUploadingImage(true);
       try {
-        const response = await userService.uploadProfileImage(result.assets[0].uri);
+        const asset = result.assets[0];
+        const fileName = asset.uri.split('/').pop() || 'profile.jpg';
+        const fileType = asset.mimeType || 'image/jpeg';
+
+        const response = await userService.uploadProfileImage(asset.uri);
         const newImageUrl = response.profileImage || response.url || response;
         setUser(prev => ({ ...prev, profileImage: newImageUrl }));
         
@@ -177,7 +247,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       } catch (e) {
         console.error(e);
-        Alert.alert("Error", "Failed to upload profile image.");
+        showAlert('UPLOAD FAILED', 'Your new avatar could not be reach the server. Try again!', 'error');
       } finally {
         setIsUploadingImage(false);
       }
@@ -361,15 +431,18 @@ export default function ProfileScreen({ navigation, onLogout }) {
             {user.recentSubmissions.map((sub, idx) => {
               const timeAgo = sub.submittedAt
                 ? (() => {
-                    const diff = Date.now() - new Date(sub.submittedAt).getTime();
+                    const date = new Date(sub.submittedAt.replace(' ', 'T'));
+                    if (isNaN(date.getTime())) return 'Recently';
+                    const diff = Date.now() - date.getTime();
                     const mins = Math.floor(diff / 60000);
+                    if (mins < 1) return 'Just now';
                     if (mins < 60) return `${mins}m ago`;
                     const hrs = Math.floor(mins / 60);
                     if (hrs < 24) return `${hrs}h ago`;
                     const days = Math.floor(hrs / 24);
                     return `${days}d ago`;
                   })()
-                : '';
+                : 'Recently';
               return (
                 <TouchableOpacity
                   key={sub.id || idx}
@@ -400,33 +473,59 @@ export default function ProfileScreen({ navigation, onLogout }) {
         animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
-        <View style={styles.sadModalOverlay}>
-          <View style={styles.sadModalContent}>
-            <View style={styles.sadIconContainer}>
-              <View style={styles.rainCircle}>
-                <CloudRain size={32} color="#F97316" />
+        <View style={styles.donutModalOverlay}>
+          <View style={[styles.donutCard, { borderColor: '#9CA3AF' }]}>
+            <View style={styles.donutCardInner}>
+              <View style={styles.donutIllustrationBox}>
+                <SadGhost />
               </View>
-              <Frown size={50} color="#6B7280" style={styles.sadFace} />
-            </View>
-            
-            <Text style={styles.sadTitle}>Leaving already?</Text>
-            <Text style={styles.sadMessage}>
-              The campus will feel a little quieter without you. Are you sure you want to go? 
-            </Text>
-
-            <View style={styles.sadActionBox}>
-              <TouchableOpacity 
-                style={styles.stayBtn} 
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.stayBtnText}>Wait, I'll stay!</Text>
-              </TouchableOpacity>
               
+              <Text style={styles.donutHeadline}>Leaving?</Text>
+              <Text style={styles.donutSubtext}>The campus walls will feel empty without your spirit.</Text>
+
+              <View style={styles.donutActionRow}>
+                <TouchableOpacity 
+                  style={[styles.donutActionBtn, { flex: 1, backgroundColor: '#F97316', borderColor: '#F97316' }]} 
+                  onPress={() => setShowLogoutModal(false)}
+                >
+                  <Text style={[styles.donutActionText, { color: '#FFF' }]}>STAY</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.donutActionBtn, { flex: 1, borderColor: '#9CA3AF' }]} 
+                  onPress={onLogout}
+                >
+                  <Text style={[styles.donutActionText, { color: '#9CA3AF' }]}>LEAVE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SYSTEM ALERT (Donut Style) */}
+      <Modal visible={alertConfig.visible} transparent animationType="fade">
+        <View style={styles.donutModalOverlay}>
+          <View style={[styles.donutCard, { borderColor: alertConfig.type === 'error' ? '#EF4444' : '#F97316' }]}>
+            <View style={styles.donutCardInner}>
+              <View style={styles.donutIllustrationBox}>
+                {alertConfig.type === 'error' ? (
+                  <XCircle size={60} color="#EF4444" strokeWidth={2} />
+                ) : (
+                  <Info size={60} color="#F97316" strokeWidth={2} />
+                )}
+              </View>
+
+              <Text style={styles.donutHeadline}>{alertConfig.title}</Text>
+              <Text style={styles.donutSubtext}>{alertConfig.message}</Text>
+
               <TouchableOpacity 
-                style={styles.sadLogoutBtn} 
-                onPress={onLogout}
+                style={[styles.donutActionBtn, { borderColor: alertConfig.type === 'error' ? '#EF4444' : '#F97316' }]} 
+                onPress={() => setAlertConfig({ ...alertConfig, visible: false })}
               >
-                <Text style={styles.sadLogoutText}>Logout</Text>
+                <Text style={[styles.donutActionText, { color: alertConfig.type === 'error' ? '#EF4444' : '#F97316' }]}>
+                  ACKNOWLEDGE
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -566,7 +665,7 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    marginBottom: 40,
+    marginBottom: 10,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -772,84 +871,126 @@ const styles = StyleSheet.create({
   // Sad Modal Styles
   sadModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(31, 41, 55, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 24
   },
   sadModalContent: {
-    width: '85%',
+    width: '100%',
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 60,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 60,
-    borderBottomLeftRadius: 10,
-    padding: 30,
-    alignItems: 'center',
+    borderRadius: 32,
+    overflow: 'hidden',
     elevation: 25,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
-    borderWidth: 1,
-    borderColor: '#FFF7ED'
+    shadowOffset: { width: 0, height: 10 }
+  },
+  premiumModalInner: {
+    padding: 32,
+    alignItems: 'center'
   },
   sadIconContainer: {
-    marginBottom: 16,
-    alignItems: 'center'
+    marginBottom: 24,
+    alignItems: 'center',
+    position: 'relative',
+    height: 180,
+    justifyContent: 'center'
   },
   rainCircle: {
     position: 'absolute',
-    top: -5,
-    right: -15,
-    opacity: 0.2
-  },
-  sadFace: {
-    opacity: 0.9
+    top: 0,
+    opacity: 0.5,
+    transform: [{ scale: 2 }]
   },
   sadTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '900',
     color: '#1F2937',
-    marginBottom: 8
+    marginBottom: 12,
+    textAlign: 'center'
   },
   sadMessage: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: 22,
+    marginBottom: 32,
+    fontWeight: '500',
     paddingHorizontal: 10
   },
   sadActionBox: {
     width: '100%',
-    gap: 8
+    gap: 12
   },
   stayBtn: {
     width: '100%',
-    backgroundColor: '#F97316',
-    height: 50,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
     shadowColor: '#F97316',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3
+    shadowOpacity: 0.3,
+    shadowRadius: 8
   },
-  stayBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800'
-  },
-  sadLogoutBtn: {
-    width: '100%',
-    height: 44,
+  premiumActionGradient: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  sadLogoutText: {
-    color: '#9CA3AF',
-    fontSize: 13,
-    fontWeight: '700'
-  }
+  
+  // Donut Modal Styles
+  donutModalOverlay: { flex: 1, backgroundColor: 'rgba(31, 41, 55, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  donutCard: { 
+    width: '75%', 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 60,
+    borderBottomRightRadius: 60,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    elevation: 25, 
+    shadowColor: '#F97316', 
+    shadowOpacity: 0.3, 
+    shadowRadius: 30, 
+    borderWidth: 3, 
+    borderColor: '#F97316', 
+    overflow: 'hidden',
+    transform: [{ rotate: '-2deg' }]
+  },
+  donutCardInner: { padding: 24, alignItems: 'center' },
+  donutIllustrationBox: { height: 110, justifyContent: 'center', marginBottom: 15 },
+  donutHeadline: { fontSize: 24, fontWeight: '900', color: '#374151', textAlign: 'center', marginBottom: 6, letterSpacing: -0.5 },
+  donutSubtext: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20, fontWeight: '500', lineHeight: 18 },
+  donutActionRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  donutActionBtn: { height: 48, borderRadius: 12, borderWidth: 2, borderColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
+  donutActionText: { color: '#F97316', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+
+  // Ghost Styles
+  ghostWrapper: { alignItems: 'center', width: 100, height: 140, justifyContent: 'center' },
+  ghostBody: {
+    width: 70,
+    height: 80,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    borderBottomLeftRadius: 5,
+    borderBottomRightRadius: 5,
+    padding: 15,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    borderWidth: 2,
+    borderColor: '#F3F4F6'
+  },
+  ghostEyes: { flexDirection: 'row', gap: 15, marginTop: 10 },
+  ghostEyeBox: { position: 'relative' },
+  ghostEye: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#374151' },
+  ghostTear: { width: 4, height: 6, backgroundColor: '#60A5FA', borderBottomLeftRadius: 2, borderBottomRightRadius: 2, position: 'absolute', top: 8, left: 2 },
+  ghostMouth: { width: 10, height: 6, borderRadius: 5, borderWidth: 2, borderColor: '#374151', marginTop: 12, borderTopWidth: 0 },
+  ghostSkirt: { flexDirection: 'row', position: 'absolute', bottom: -10, left: 0, right: 0, justifyContent: 'center' },
+  ghostSkirtWave: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFFFFF', marginTop: -10, borderWidth: 2, borderColor: '#F3F4F6' },
+  ghostShadow: { width: 50, height: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5, marginTop: 20 },
 });

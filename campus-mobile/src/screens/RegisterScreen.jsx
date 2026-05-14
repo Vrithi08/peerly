@@ -14,6 +14,7 @@ import {
   Animated 
 } from 'react-native';
 import { authService } from '../services/api';
+import ThemedAlert from '../components/ThemedAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Mail, 
@@ -73,6 +74,11 @@ export default function RegisterScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   const slideUpAnim = useRef(new Animated.Value(100)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -95,28 +101,27 @@ export default function RegisterScreen({ navigation }) {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Missing Fields', 'Please fill in all fields');
+      showAlert('MISSING INFO', 'A true peer needs a name, email, and password to join the arena!', 'warning');
       return;
     }
     if (!agreed) {
-      Alert.alert('Terms Required', 'Please agree to the Terms & Conditions and Privacy Policy.');
+      showAlert('TERMS REQUIRED', 'Please agree to our pact (Terms & Conditions) before entering the arena.', 'warning');
       return;
     }
     
     if (!email.toLowerCase().endsWith('@cb.students.amrita.edu')) {
-      Alert.alert('Registration Denied', 'Only Amrita College students (@cb.students.amrita.edu) can register for this platform.');
+      showAlert('ACCESS DENIED', 'This arena is exclusive to Amrita students! Use your university email.', 'error');
       return;
     }
     
     setLoading(true);
     try {
       await authService.register({ name, email, password, college: 'Amrita Vishwa Vidyapeetham' });
-      Alert.alert('Account Created', 'You can now log in with your credentials.', [
-        { text: 'Continue', onPress: () => navigation.navigate('Login') }
-      ]);
+      showAlert('ACCOUNT CREATED', 'Your warrior profile is ready! You can now sign in to conquer the campus.', 'success');
+      // Note: In real app, might want to delay navigation until alert is acknowledged
     } catch (error) {
-      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'An error occurred.');
-      Alert.alert('Registration Failed', msg);
+      const msg = error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'The registration gates are currently closed. Try again later!');
+      showAlert('SIGNUP FAILED', msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -235,6 +240,19 @@ export default function RegisterScreen({ navigation }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
+
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.type === 'success') {
+            navigation.navigate('Login');
+          }
+        }}
+      />
     </View>
   );
 }

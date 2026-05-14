@@ -16,6 +16,7 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, challengeService, submissionService, votingService } from '../services/api';
 import { 
@@ -41,8 +42,10 @@ import {
   Palette,
   Target,
   Bot,
-  FileText
+  FileText,
+  X
 } from 'lucide-react-native';
+import ThemedAlert from '../components/ThemedAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -84,6 +87,12 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
   const [countdown, setCountdown] = useState('');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [showVoteSuccess, setShowVoteSuccess] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   useEffect(() => { 
     fetchData(); 
@@ -140,13 +149,33 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
   const updateCountdown = () => {
     if (!challenge) return;
     const now = new Date().getTime();
-    const end = new Date(challenge.endDate).getTime();
+    const deadlineStr = challenge.status === 'OPEN' ? challenge.submissionDeadline : challenge.votingDeadline;
+    if (!deadlineStr) {
+      setCountdown('--');
+      return;
+    }
+    const end = new Date(deadlineStr.replace(' ', 'T')).getTime();
+    if (isNaN(end)) {
+      setCountdown('--');
+      return;
+    }
+    
     const diff = end - now;
-    if (diff <= 0) { setCountdown('ENDED'); return; }
+    if (diff <= 0) { 
+      setCountdown(challenge.status === 'OPEN' ? 'CLOSED' : 'VOTING ENDED'); 
+      return; 
+    }
+    
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
     const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const s = Math.floor((diff % (1000 * 60)) / 1000);
-    setCountdown(`${h}h ${m}m ${s}s`);
+    
+    if (d > 0) {
+      setCountdown(`${d}d ${h}h`);
+    } else {
+      setCountdown(`${h}h ${m}m ${s}s`);
+    }
   };
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
@@ -159,8 +188,9 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
         const updated = prev.map(s => s.id === submissionId ? { ...s, voteCount: (s.voteCount || 0) + 1 } : s);
         return updated.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
       });
+      setShowVoteSuccess(true);
     } catch (error) {
-      Alert.alert('Peerly', 'Voting is limited to one vote per challenge.');
+      showAlert('VOTE LIMITED', 'Your voice has already been heard in this arena! You can only vote once per challenge.', 'warning');
     } finally {
       setVotingId(null);
     }
@@ -200,7 +230,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
           <View style={styles.bannerCard}>
             <View style={styles.illustrationBox}>
               <Image 
-                source={{ uri: getCategoryCover(challenge.category) }} 
+                source={{ uri: challenge.imageUrl || getCategoryCover(challenge.category) }} 
                 style={styles.bannerImage}
                 resizeMode="cover"
               />
@@ -208,22 +238,20 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.challengeTitle}>{challenge.title}</Text>
-              <View style={styles.ratingRow}>
-                <View style={styles.starGroup}>
-                  <Star size={14} color="#F59E0B" fill="#F59E0B" />
-                  <Text style={styles.ratingVal}>4.8</Text>
-                </View>
-                <Text style={styles.participationText}>{submissions.length * 12} participants</Text>
-              </View>
-
-              <View style={styles.creatorRow}>
-                <View style={styles.creatorAvatar}><Users size={14} color="#FFFFFF" /></View>
-                <Text style={styles.creatorName}>{challenge.creatorName || challenge.createdBy || challenge.userName || 'Student Peer'}</Text>
+              <View style={styles.headerBadgeRow}>
                 <View style={styles.statusTag}>
                   <View style={[styles.statusDot, { backgroundColor: phase === 'OPEN' ? '#10B981' : '#F43F5E' }]} />
                   <Text style={styles.statusText}>{phase}</Text>
                 </View>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryBadgeText}>{challenge.category}</Text>
+                </View>
+              </View>
+              <Text style={styles.challengeTitle}>{challenge.title}</Text>
+              
+              <View style={styles.creatorRow}>
+                <View style={styles.creatorAvatar}><Users size={14} color="#FFFFFF" /></View>
+                <Text style={styles.creatorName}>Hosted by <Text style={styles.boldText}>{challenge.creatorName || challenge.createdBy || challenge.userName || 'Student Peer'}</Text></Text>
               </View>
             </View>
           </View>
@@ -235,47 +263,45 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
 
           <View style={styles.statsContainer}>
             <View style={styles.statBox}>
-              <Text style={styles.statVal}>{submissions.length * 8}+</Text>
-              <Text style={styles.statLabel}>Participants</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
               <Text style={styles.statVal}>{totalVotes}</Text>
-              <Text style={styles.statLabel}>Total Votes</Text>
+              <Text style={styles.statLabel}>VOTES</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statVal}>{submissions.length}</Text>
-              <Text style={styles.statLabel}>Submissions</Text>
+              <Text style={styles.statLabel}>ENTRIES</Text>
             </View>
           </View>
 
-          {submissions.length > 0 && (
+          {challenge && challenge.topPerformerName && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Hall of <Text style={styles.titleUnderline}>Fame</Text></Text>
-              <View style={styles.leaderboardBox}>
-                {top3.map((sub, idx) => (
-                  <View key={sub.id} style={styles.leaderRow}>
-                    <View style={styles.leaderAvatarBox}>
-                      <View style={styles.leaderAvatarCircle}>
-                        <Users size={16} color="#F97316" />
-                      </View>
-                      <View style={styles.medalBadge}>
-                        <Text style={styles.medalIcon}>{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</Text>
-                      </View>
+              <Text style={styles.sectionTitle}>Arena <Text style={styles.titleUnderline}>Champion</Text></Text>
+              <View style={styles.championCard}>
+                <View style={styles.championAvatarBox}>
+                  <View style={[styles.championAvatar, { borderColor: '#F59E0B' }]}>
+                    <Users size={32} color="#F59E0B" />
+                    <View style={styles.crownContainer}>
+                      <Award size={24} color="#F59E0B" fill="#F59E0B" fillOpacity={0.2} />
                     </View>
-                    <View style={styles.leaderMeta}>
-                      <Text style={styles.leaderName}>{sub.userName || sub.createdBy || 'Peer'}</Text>
-                      <Text style={styles.leaderPoints}>{sub.voteCount} XP EARNED</Text>
-                    </View>
-                    <ArrowUpRight size={18} color="#FED7AA" />
                   </View>
-                ))}
+                  <View style={styles.championRankBadge}>
+                    <Sparkles size={14} color="#FFF" fill="#FFF" />
+                    <Text style={styles.championRankText}>RANK #1</Text>
+                  </View>
+                </View>
+                <View style={styles.championMeta}>
+                  <Text style={styles.championName}>{challenge.topPerformerName}</Text>
+                  <Text style={styles.championVotes}>{challenge.topPerformerVotes} COMMUNITY VOTES</Text>
+                  <View style={styles.championStatus}>
+                    <Zap size={12} color="#F59E0B" fill="#F59E0B" />
+                    <Text style={styles.championStatusText}>Official Winner</Text>
+                  </View>
+                </View>
               </View>
             </View>
           )}
 
-          <View style={[styles.section, { marginBottom: 40 }]}>
+          <View style={[styles.section, { marginBottom: 10 }]}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Recent <Text style={styles.titleUnderline}>Submissions</Text></Text>
               <Text style={styles.timerVal}>{countdown}</Text>
@@ -326,7 +352,6 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
               ))}
             </View>
           </View>
-          <View style={{ height: 120 }} />
         </ScrollView>
       </SafeAreaView>
 
@@ -335,17 +360,25 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={styles.primaryBtn}
             onPress={() => navigation.navigate('Submission', { challengeId, challengeTitle: challenge.title })}
+            activeOpacity={0.9}
           >
-            <Text style={styles.primaryBtnText}>Submit Your Entry</Text>
+            <LinearGradient
+              colors={['#F97316', '#EA580C']}
+              style={styles.primaryGradient}
+            >
+              <Text style={styles.primaryBtnText}>CONQUER ARENA</Text>
+              <ArrowUpRight size={20} color="#FFF" />
+            </LinearGradient>
           </TouchableOpacity>
         ) : phase === 'VOTING' ? (
           <View style={styles.votingIndicator}>
+            <Zap size={18} color="#F59E0B" fill="#F59E0B" />
             <Text style={styles.votingIndicatorText}>Voting is Live! Cast your votes below</Text>
           </View>
         ) : (
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#E5E7EB' }]} disabled>
-            <Text style={[styles.primaryBtnText, { color: '#9CA3AF' }]}>Challenge Ended</Text>
-          </TouchableOpacity>
+          <View style={[styles.primaryBtn, { backgroundColor: '#374151' }]}>
+            <Text style={[styles.primaryBtnText, { color: '#D1D5DB' }]}>Arena Closed</Text>
+          </View>
         )}
       </View>
 
@@ -410,6 +443,36 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* VOTE SUCCESS MODAL */}
+      <Modal visible={showVoteSuccess} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.successCard}>
+            <LinearGradient colors={['#FFF7ED', '#FFFFFF']} style={styles.successCardInner}>
+              <View style={styles.iconCircle}>
+                <Zap size={40} color="#F59E0B" fill="#F59E0B" />
+              </View>
+              <Text style={styles.modalTitle}>VOTE RECORDED!</Text>
+              <Text style={styles.modalSubtitle}>
+                Your support has been etched into the arena. Every vote brings a peer closer to glory.
+              </Text>
+              <TouchableOpacity style={styles.modalActionBtn} onPress={() => setShowVoteSuccess(false)}>
+                <LinearGradient colors={['#F97316', '#EA580C']} style={styles.modalActionGradient}>
+                  <Text style={styles.modalActionText}>Back to Arena</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
+
+      <ThemedAlert 
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </View>
   );
 };
@@ -420,87 +483,127 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF7ED' },
   safeArea: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  navHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, height: 60, marginBottom: 8 },
+  navHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60, marginBottom: 8 },
   navTitle: { fontSize: 16, fontWeight: '800', color: '#1F2937' },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
-  scrollContent: { paddingBottom: 20 },
-  bannerCard: { marginHorizontal: 24, marginBottom: 32 },
-  illustrationBox: { height: 240, backgroundColor: '#FFF1E6', borderRadius: 32, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1.5, borderColor: '#FED7AA' },
+  scrollContent: { paddingBottom: 70, paddingTop: 8 },
+  bannerCard: { marginHorizontal: 20, marginBottom: 20 },
+  illustrationBox: { height: 260, backgroundColor: '#FFF1E6', borderRadius: 36, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: '#FED7AA' },
   bannerImage: { width: '100%', height: '100%' },
-  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 237, 0.2)' },
-  floatingBadges: { position: 'absolute', top: 40, right: 40 },
-  floatBadge: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
-  headerInfo: { marginTop: 24 },
-  challengeTitle: { fontSize: 36, fontWeight: '900', color: '#1F2937', letterSpacing: -1, lineHeight: 40 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
-  starGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ratingVal: { fontSize: 13, fontWeight: '800', color: '#1F2937' },
-  participationText: { fontSize: 13, color: '#6B7280', fontWeight: '700' },
-  creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20 },
-  creatorAvatar: { width: 32, height: 32, borderRadius: 12, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center' },
-  creatorName: { fontSize: 14, fontWeight: '800', color: '#1F2937', flex: 1 },
-  statusTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF1E6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '900', color: '#1F2937' },
-  section: { paddingHorizontal: 24, marginBottom: 32 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  sectionTitle: { fontSize: 22, fontWeight: '900', color: '#1F2937', letterSpacing: -0.5, marginBottom: 16 },
-  titleUnderline: { textDecorationLine: 'underline', textDecorationColor: '#FED7AA' },
-  aboutText: { fontSize: 15, color: '#6B7280', lineHeight: 24, fontWeight: '500' },
-  statsContainer: { flexDirection: 'row', marginHorizontal: 24, paddingVertical: 24, borderTopWidth: 1.5, borderBottomWidth: 1.5, borderColor: '#E5E7EB', justifyContent: 'space-between', marginBottom: 32 },
+  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 237, 0.1)' },
+  headerInfo: { marginTop: 20 },
+  headerBadgeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  categoryBadge: { backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  categoryBadgeText: { fontSize: 10, fontWeight: '900', color: '#6B7280', letterSpacing: 1 },
+  challengeTitle: { fontSize: 32, fontWeight: '900', color: '#1F2937', letterSpacing: -1.5, lineHeight: 38, marginBottom: 16 },
+  creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  creatorAvatar: { width: 32, height: 32, borderRadius: 12, backgroundColor: '#1F2937', justifyContent: 'center', alignItems: 'center' },
+  creatorName: { fontSize: 14, fontWeight: '600', color: '#6B7280', flex: 1 },
+  boldText: { color: '#1F2937', fontWeight: '800' },
+  statusTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 11, fontWeight: '900', color: '#1F2937', letterSpacing: 0.5 },
+  section: { paddingHorizontal: 20, marginBottom: 24 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  sectionTitle: { fontSize: 24, fontWeight: '900', color: '#1F2937', letterSpacing: -1, marginBottom: 12 },
+  titleUnderline: { color: '#F97316', fontStyle: 'italic' },
+  aboutText: { fontSize: 15, color: '#6B7280', lineHeight: 26, fontWeight: '500' },
+  statsContainer: { flexDirection: 'row', marginHorizontal: 20, paddingVertical: 12, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#FED7AA', justifyContent: 'space-around', marginBottom: 24, backgroundColor: '#FFF7ED' },
   statBox: { flex: 1, alignItems: 'center' },
-  statVal: { fontSize: 18, fontWeight: '900', color: '#1F2937' },
-  statLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', marginTop: 4 },
-  statDivider: { width: 1.5, height: '60%', backgroundColor: '#E5E7EB', alignSelf: 'center' },
-  leaderboardBox: { backgroundColor: '#FFFFFF', borderRadius: 28, padding: 20, borderWidth: 1.5, borderColor: '#FED7AA', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
-  leaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  leaderAvatarBox: { width: 50, height: 50, marginRight: 16 },
-  leaderAvatarCircle: { width: 50, height: 50, borderRadius: 20, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#FED7AA' },
-  medalBadge: { position: 'absolute', bottom: -4, right: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, borderWidth: 1, borderColor: '#FED7AA' },
-  medalIcon: { fontSize: 12 },
-  leaderMeta: { flex: 1 },
-  leaderName: { fontSize: 15, fontWeight: '900', color: '#1F2937' },
-  leaderPoints: { fontSize: 10, fontWeight: '900', color: '#6B7280', letterSpacing: 1, marginTop: 4 },
+  emptyContainer: { padding: 20, alignItems: 'center', justifyContent: 'center' },
+  emptyIconBox: { width: 80, height: 80, borderRadius: 30, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  emptyTitle: { fontSize: 20, fontWeight: '900', color: '#1F2937', marginBottom: 8 },
+  statLabel: { fontSize: 10, fontWeight: '900', color: '#9CA3AF', letterSpacing: 1, textTransform: 'uppercase' },
+  statDivider: { width: 2, height: '50%', backgroundColor: '#FED7AA', alignSelf: 'center' },
+  championCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 32, padding: 24, borderWidth: 2, borderColor: '#FED7AA', marginTop: 10, elevation: 4, shadowColor: '#F97316', shadowOpacity: 0.1, shadowRadius: 15 },
+  championAvatarBox: { alignItems: 'center', marginRight: 24 },
+  championAvatar: { width: 80, height: 80, borderRadius: 32, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5 },
+  championRankBadge: { position: 'absolute', bottom: -12, backgroundColor: '#F59E0B', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 2, borderColor: '#FFF' },
+  championRankText: { fontSize: 10, fontWeight: '900', color: '#FFF' },
+  championMeta: { flex: 1 },
+  championName: { fontSize: 20, fontWeight: '900', color: '#1F2937', marginBottom: 4 },
+  championVotes: { fontSize: 11, fontWeight: '900', color: '#6B7280', letterSpacing: 1 },
+  championStatus: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: '#FFF7ED', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
+  championStatusText: { fontSize: 10, fontWeight: '800', color: '#F59E0B', textTransform: 'uppercase' },
+  crownContainer: { position: 'absolute', top: -20 },
   submissionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  submissionCard: { width: (width - 48 - 12) / 2, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1.5, borderColor: '#FED7AA', overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
-  subPreviewBox: { height: 130, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' },
+  submissionCard: { width: (width - 48 - 12) / 2, backgroundColor: '#FFFFFF', borderRadius: 28, borderWidth: 2, borderColor: '#FED7AA', overflow: 'hidden', elevation: 3, shadowColor: '#F97316', shadowOpacity: 0.05, shadowRadius: 10 },
+  subPreviewBox: { height: 140, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center' },
   subImage: { width: '100%', height: '100%' },
-  subTextPlaceholder: { padding: 12 },
-  subTextSnippet: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
-  subCardFooter: { padding: 12, gap: 12 },
-  subUserRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  subUserAvatar: { width: 18, height: 18, borderRadius: 6, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' },
-  subUserName: { fontSize: 11, fontWeight: '800', color: '#1F2937', flex: 1 },
+  subTextPlaceholder: { padding: 16 },
+  subTextSnippet: { fontSize: 12, color: '#6B7280', fontWeight: '600', lineHeight: 18 },
+  subCardFooter: { padding: 16, gap: 12 },
+  subUserRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  subUserAvatar: { width: 20, height: 20, borderRadius: 8, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center' },
+  subUserName: { fontSize: 12, fontWeight: '800', color: '#1F2937', flex: 1 },
   voteControls: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  voteCountBox: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  voteCountVal: { fontSize: 14, fontWeight: '900', color: '#1F2937' },
-  voteLabel: { fontSize: 9, fontWeight: '700', color: '#9CA3AF' },
-  voteBtnSmall: { width: 32, height: 32, backgroundColor: '#F97316', borderRadius: 10, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  voteCountBox: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  voteCountVal: { fontSize: 16, fontWeight: '900', color: '#1F2937' },
+  voteLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
+  voteBtnSmall: { width: 36, height: 36, backgroundColor: '#F97316', borderRadius: 12, justifyContent: 'center', alignItems: 'center', elevation: 4 },
   voteBtnDisabled: { opacity: 0.3, backgroundColor: '#FED7AA' },
-  trendingBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#F43F5E', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
-  trendingText: { fontSize: 8, fontWeight: '900', color: '#FFF' },
-  timerVal: { fontSize: 13, fontWeight: '900', color: '#F97316' },
-  bottomCtaContainer: { position: 'absolute', bottom: 120, left: 24, right: 24 },
-  primaryBtn: { height: 64, backgroundColor: '#F97316', borderRadius: 24, justifyContent: 'center', alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
-  votingIndicator: { height: 64, backgroundColor: '#FFFBEB', borderRadius: 24, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#FDE68A' },
-  votingIndicatorText: { fontSize: 14, fontWeight: '900', color: '#F59E0B' },
+  trendingBadge: { position: 'absolute', top: 10, right: 10, backgroundColor: '#F43F5E', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  trendingText: { fontSize: 9, fontWeight: '900', color: '#FFF' },
+  timerVal: { fontSize: 14, fontWeight: '900', color: '#F97316', backgroundColor: '#FFF7ED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: '#FED7AA' },
+  bottomCtaContainer: { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', backgroundColor: 'transparent' },
+  primaryBtn: { 
+    width: width * 0.85, 
+    height: 56, 
+    borderRadius: 16, 
+    overflow: 'hidden', 
+    elevation: 12, 
+    shadowColor: '#F97316', 
+    shadowOpacity: 0.4, 
+    shadowRadius: 20, 
+    shadowOffset: { width: 0, height: 8 }, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)'
+  },
+  primaryGradient: { 
+    width: '100%', 
+    height: '100%', 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    gap: 12 
+  },
+  primaryBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: '900', 
+    letterSpacing: 2, 
+    textTransform: 'uppercase' 
+  },
+  votingIndicator: { width: width * 0.85, height: 56, backgroundColor: '#FFFFFF', borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, borderWidth: 2, borderColor: '#FDE68A', elevation: 4 },
+  votingIndicatorText: { fontSize: 15, fontWeight: '900', color: '#B45309' },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  viewerContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '90%', width: '100%' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(31, 41, 55, 0.9)', justifyContent: 'flex-end' },
+  viewerContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 36, borderTopRightRadius: 36, height: '92%', width: '100%' },
   viewerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   viewerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  viewerUserName: { fontSize: 18, fontWeight: '900', color: '#1F2937' },
-  closeModalBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+  viewerUserName: { fontSize: 20, fontWeight: '900', color: '#1F2937' },
+  closeModalBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   viewerScroll: { padding: 24 },
-  viewerImage: { width: width - 48, height: 450, borderRadius: 24, marginBottom: 24 },
-  viewerTextContainer: { padding: 24, backgroundColor: '#FFF7ED', borderRadius: 24, borderWidth: 1, borderColor: '#FED7AA', marginBottom: 24 },
-  viewerText: { fontSize: 16, color: '#1F2937', lineHeight: 26, fontWeight: '500' },
-  viewerFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingBottom: 40 },
-  viewerStats: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  viewerVoteCount: { fontSize: 20, fontWeight: '900', color: '#1F2937' },
-  viewerVoteLabel: { fontSize: 12, fontWeight: '700', color: '#9CA3AF' },
-  modalVoteBtn: { backgroundColor: '#F97316', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16, elevation: 4 },
-  modalVoteBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  viewerImage: { width: width - 48, height: 480, borderRadius: 32, marginBottom: 24 },
+  viewerTextContainer: { padding: 28, backgroundColor: '#FFF7ED', borderRadius: 32, borderWidth: 2, borderColor: '#FED7AA', marginBottom: 24 },
+  viewerText: { fontSize: 17, color: '#1F2937', lineHeight: 28, fontWeight: '500' },
+  viewerFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingBottom: 60 },
+  viewerStats: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  viewerVoteCount: { fontSize: 24, fontWeight: '900', color: '#1F2937' },
+  viewerVoteLabel: { fontSize: 13, fontWeight: '700', color: '#9CA3AF' },
+  modalVoteBtn: { backgroundColor: '#F97316', paddingHorizontal: 28, paddingVertical: 16, borderRadius: 20, elevation: 8, shadowColor: '#F97316', shadowOpacity: 0.3 },
+  modalVoteBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  
+  // Custom Alerts & Success Modals
+  successCard: { width: '85%', borderRadius: 32, overflow: 'hidden', elevation: 20, shadowColor: '#F97316', shadowOpacity: 0.3, shadowRadius: 30, alignSelf: 'center' },
+  successCardInner: { padding: 32, alignItems: 'center' },
+  iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginBottom: 24, borderWidth: 2, borderColor: '#FED7AA' },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#1F2937', letterSpacing: -0.5, marginBottom: 12 },
+  modalSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 24, fontWeight: '500' },
+  modalActionBtn: { width: '100%', height: 56, borderRadius: 16, overflow: 'hidden' },
+  modalActionGradient: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12 },
+  modalActionText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 });
