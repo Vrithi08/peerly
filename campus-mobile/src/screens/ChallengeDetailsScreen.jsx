@@ -82,6 +82,18 @@ const getPreviewUrl = (sub) => {
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+// --- Section Header Component (Donut Style) ---
+const SectionHeader = ({ title, highlight }) => (
+  <View style={styles.headerWrapper}>
+    <View style={styles.headerBadge}>
+      <Text style={styles.headerTitleText}>
+        {title} <Text style={styles.headerHighlightText}>{highlight}</Text>
+      </Text>
+    </View>
+    <View style={styles.headerUnderline} />
+  </View>
+);
+
 const ChallengeDetailsScreen = ({ route, navigation }) => {
   const { challengeId } = route.params;
   
@@ -171,25 +183,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     if (!challenge) return;
     const now = new Date().getTime();
     
-    let deadlineStr = challenge.votingDeadline;
-    let label = '';
-    
-    if (challenge.status === 'OPEN') {
-      const subEnd = new Date(challenge.submissionDeadline?.replace(' ', 'T')).getTime();
-      if (now < subEnd) {
-        deadlineStr = challenge.submissionDeadline;
-      } else if (challenge.votingStartDate) {
-        const voteStart = new Date(challenge.votingStartDate.replace(' ', 'T')).getTime();
-        if (now < voteStart) {
-          deadlineStr = challenge.votingStartDate;
-          label = 'Voting starts ';
-        } else {
-          setCountdown('VOTING SOON');
-          return;
-        }
-      }
-    }
-
+    const deadlineStr = challenge.submissionDeadline;
     if (!deadlineStr) {
       setCountdown('--');
       return;
@@ -203,7 +197,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     
     const diff = end - now;
     if (diff <= 0) { 
-      setCountdown(challenge.status === 'OPEN' ? 'CLOSED' : 'VOTING ENDED'); 
+      setCountdown('SUBMISSIONS CLOSED'); 
       return; 
     }
     
@@ -218,7 +212,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     } else {
       timeStr = `${h}h ${m}m ${s}s`;
     }
-    setCountdown(label + timeStr);
+    setCountdown(timeStr);
   };
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
@@ -270,142 +264,124 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F97316" />}
         >
-          <View style={styles.bannerCard}>
-            <View style={styles.illustrationBox}>
-              <Image 
-                source={{ uri: challenge.imageUrl || getCategoryCover(challenge.category) }} 
-                style={styles.bannerImage}
-                resizeMode="cover"
-              />
-              <View style={styles.bannerOverlay} />
+          <View style={styles.heroSection}>
+            <Image 
+              source={{ uri: challenge.imageUrl || getCategoryCover(challenge.category) }} 
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <LinearGradient 
+              colors={['transparent', 'rgba(0,0,0,0.6)']} 
+              style={styles.heroOverlay}
+            />
+          </View>
+
+          <View style={styles.mainContent}>
+            <View style={styles.titleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.challengeCategoryText}>{challenge.category}</Text>
+                <Text style={styles.challengeTitleText}>{challenge.title}</Text>
+              </View>
+              <View style={[
+                styles.statusBadge, 
+                { backgroundColor: phase === 'OPEN' ? '#10B981' : phase === 'VOTING' ? '#F59E0B' : '#F43F5E' }
+              ]}>
+                <Star size={12} color="#FFF" fill="#FFF" />
+                <Text style={styles.statusBadgeText}>
+                  {phase === 'OPEN' ? 'OPEN' : phase === 'VOTING' ? 'VOTING' : 'CLOSED'}
+                </Text>
+              </View>
             </View>
 
-            <View style={styles.headerInfo}>
-              <View style={styles.headerBadgeRow}>
-                <View style={styles.statusTag}>
-                  <View style={[styles.statusDot, { backgroundColor: phase === 'OPEN' ? '#10B981' : '#F43F5E' }]} />
-                  <Text style={styles.statusText}>{phase}</Text>
-                </View>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{challenge.category}</Text>
+            <View style={styles.creatorInfo}>
+              <View style={styles.creatorAvatar}><Users size={14} color="#FFFFFF" /></View>
+              <Text style={styles.creatorNameText}>By <Text style={styles.boldText}>{challenge.creatorName || 'Arena Master'}</Text></Text>
+            </View>
+
+            <Text style={styles.descriptionText}>{challenge.description}</Text>
+
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { backgroundColor: '#F0F9FF' }]}>
+                <View style={styles.statIconBox}><Clock size={20} color="#0EA5E9" /></View>
+                <View>
+                  <Text style={styles.statLabelText}>Time Left</Text>
+                  <Text style={styles.statValueText}>{countdown.replace('h', ' H').replace('m', ' M').replace('s', ' S')}</Text>
                 </View>
               </View>
-              <Text style={styles.challengeTitle}>{challenge.title}</Text>
+              <View style={[styles.statCard, { backgroundColor: '#FFF7ED' }]}>
+                <View style={styles.statIconBox}><Users size={20} color="#F97316" /></View>
+                <View>
+                  <Text style={styles.statLabelText}>Total Entries</Text>
+                  <Text style={styles.statValueText}>{submissions.length} Warriors</Text>
+                </View>
+              </View>
+            </View>
+
+            <SectionHeader title="Arena" highlight="Roadmap" />
+            <View style={styles.timelineContainer}>
+              <View style={styles.timelineLine} />
               
-              <View style={styles.creatorRow}>
-                <View style={styles.creatorAvatar}><Users size={14} color="#FFFFFF" /></View>
-                <Text style={styles.creatorName}>Hosted by <Text style={styles.boldText}>{challenge.creatorName || challenge.createdBy || challenge.userName || 'Student Peer'}</Text></Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About <Text style={styles.titleUnderline}>This Challenge</Text></Text>
-            <Text style={styles.aboutText}>{challenge.description}</Text>
-          </View>
-
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statVal}>{totalVotes}</Text>
-              <Text style={styles.statLabel}>VOTES</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statVal}>{submissions.length}</Text>
-              <Text style={styles.statLabel}>ENTRIES</Text>
-            </View>
-          </View>
-
-          {challenge && challenge.topPerformerName && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Arena <Text style={styles.titleUnderline}>Champion</Text></Text>
-              <View style={styles.championCard}>
-                <View style={styles.championAvatarBox}>
-                  <View style={[styles.championAvatar, { borderColor: '#F59E0B' }]}>
-                    <Users size={32} color="#F59E0B" />
-                    <View style={styles.crownContainer}>
-                      <Award size={24} color="#F59E0B" fill="#F59E0B" fillOpacity={0.2} />
-                    </View>
-                  </View>
-                  <View style={styles.championRankBadge}>
-                    <Sparkles size={14} color="#FFF" fill="#FFF" />
-                    <Text style={styles.championRankText}>RANK #1</Text>
-                  </View>
+              <View style={styles.timelineItem}>
+                <View style={[styles.timelineDot, { backgroundColor: '#F97316' }]}>
+                  <Calendar size={14} color="#FFF" />
                 </View>
-                <View style={styles.championMeta}>
-                  <Text style={styles.championName}>{challenge.topPerformerName}</Text>
-                  <Text style={styles.championVotes}>{challenge.topPerformerVotes} COMMUNITY VOTES</Text>
-                  <View style={styles.championStatus}>
-                    <Zap size={12} color="#F59E0B" fill="#F59E0B" />
-                    <Text style={styles.championStatusText}>Official Winner</Text>
-                  </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineLabel}>SUBMISSION DEADLINE</Text>
+                  <Text style={styles.timelineDate}>{formatDate(challenge.submissionDeadline)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.timelineItem}>
+                <View style={[styles.timelineDot, { backgroundColor: '#F59E0B' }]}>
+                  <Zap size={14} color="#FFF" fill="#FFF" />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineLabel}>VOTING PHASE STARTS</Text>
+                  <Text style={styles.timelineDate}>{formatDate(challenge.votingStartDate)}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.timelineItem, { marginBottom: 30 }]}>
+                <View style={[styles.timelineDot, { backgroundColor: '#F43F5E' }]}>
+                  <Target size={14} color="#FFF" />
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineLabel}>VOTING ENDS</Text>
+                  <Text style={styles.timelineDate}>{formatDate(challenge.votingDeadline)}</Text>
                 </View>
               </View>
             </View>
-          )}
 
-          <View style={[styles.section, { marginBottom: 10 }]}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Recent <Text style={styles.titleUnderline}>Submissions</Text></Text>
-              <Text style={styles.timerVal}>{countdown}</Text>
-            </View>
-            <View style={styles.submissionGrid}>
-              {submissions.map((sub) => (
+            <SectionHeader title="Recent" highlight="Submissions" />
+            <View style={styles.submissionList}>
+              {submissions.map((sub, idx) => (
                 <TouchableOpacity 
                   key={sub.id} 
-                  style={styles.submissionCard}
+                  style={styles.submissionRow}
                   onPress={() => setSelectedSubmission(sub)}
                 >
-                  <View style={styles.subPreviewBox}>
-                    {(sub.contentType === 'IMAGE' || sub.type?.toUpperCase() === 'IMAGE') && getPreviewUrl(sub) ? (
-                      <Image source={{ uri: getPreviewUrl(sub) }} style={styles.subImage} />
-                    ) : (sub.contentType === 'VIDEO' || sub.type?.toUpperCase() === 'VIDEO') ? (
-                      <View style={styles.subTextPlaceholder}>
-                        <Video size={32} color="#F97316" style={{ marginBottom: 8 }} />
-                        <Text style={styles.subTextSnippet}>Video Entry</Text>
-                      </View>
-                    ) : (sub.contentType === 'AUDIO' || sub.type?.toUpperCase() === 'AUDIO') ? (
-                      <View style={styles.subTextPlaceholder}>
-                        <Music size={32} color="#F97316" style={{ marginBottom: 8 }} />
-                        <Text style={styles.subTextSnippet}>Audio Track</Text>
-                      </View>
-                    ) : (sub.contentType === 'DOCUMENT' || sub.type?.toUpperCase() === 'DOCUMENT') ? (
-                      <View style={styles.subTextPlaceholder}>
-                        <File size={32} color="#F97316" style={{ marginBottom: 8 }} />
-                        <Text style={styles.subTextSnippet} numberOfLines={1}>{sub.name || 'Document'}</Text>
-                      </View>
+                  <View style={styles.subThumbnailBox}>
+                    {(sub.contentType === 'IMAGE' || sub.type?.toUpperCase() === 'IMAGE') ? (
+                      <Image source={{ uri: getPreviewUrl(sub) }} style={styles.subThumbnail} />
                     ) : (
-                      <View style={styles.subTextPlaceholder}>
-                        <FileText size={20} color="#FED7AA" style={{ marginBottom: 8 }} />
-                        <Text style={styles.subTextSnippet} numberOfLines={4}>{sub.textContent || sub.content || 'Text Submission'}</Text>
-                      </View>
-                    )}
-                    {(sub.voteCount || 0) > 5 && (
-                      <View style={styles.trendingBadge}>
-                        <Flame size={10} color="#FFF" fill="#FFF" />
-                        <Text style={styles.trendingText}>TRENDING</Text>
+                      <View style={styles.subThumbPlaceholder}>
+                        {sub.contentType === 'VIDEO' ? <Video size={20} color="#F97316" /> : 
+                         sub.contentType === 'AUDIO' ? <Music size={20} color="#F97316" /> : <FileText size={20} color="#F97316" />}
                       </View>
                     )}
                   </View>
-                  <View style={styles.subCardFooter}>
-                    <View style={styles.subUserRow}>
-                      <View style={styles.subUserAvatar}><Users size={10} color="#F97316" /></View>
-                      <Text style={styles.subUserName} numberOfLines={1}>{sub.userName || sub.createdBy || 'Peer'}</Text>
-                    </View>
-                    <View style={styles.voteControls}>
-                      <View style={styles.voteCountBox}>
-                        <Text style={styles.voteCountVal}>{sub.voteCount || 0}</Text>
-                        <Text style={styles.voteLabel}>votes</Text>
-                      </View>
-                      <TouchableOpacity 
-                        style={[styles.voteBtnSmall, phase !== 'VOTING' && styles.voteBtnDisabled]}
-                        disabled={phase !== 'VOTING' || votingId === sub.id}
-                        onPress={() => handleVote(sub.id)}
-                      >
-                        {votingId === sub.id ? <ActivityIndicator size="small" color="#ffffff" /> : <Flame size={14} color="#ffffff" />}
-                      </TouchableOpacity>
-                    </View>
+                  <View style={styles.subInfo}>
+                    <Text style={styles.subTitle} numberOfLines={1}>{sub.userName || 'Peer Warrior'}</Text>
+                    <Text style={styles.subMeta}>Entry #{submissions.length - idx} • {sub.voteCount || 0} Votes</Text>
                   </View>
+                  <TouchableOpacity 
+                    style={styles.viewActionBtn}
+                    onPress={() => setSelectedSubmission(sub)}
+                  >
+                    <LinearGradient colors={['#F97316', '#EA580C']} style={styles.actionCircle}>
+                      <ArrowUpRight size={16} color="#FFF" />
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </View>
@@ -553,26 +529,47 @@ const styles = StyleSheet.create({
   navTitle: { fontSize: 16, fontWeight: '800', color: '#1F2937' },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
   scrollContent: { paddingBottom: 70, paddingTop: 8 },
-  bannerCard: { marginHorizontal: 20, marginBottom: 20 },
-  illustrationBox: { height: 260, backgroundColor: '#FFF1E6', borderRadius: 36, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: '#FED7AA' },
-  bannerImage: { width: '100%', height: '100%' },
-  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 237, 0.1)' },
-  headerInfo: { marginTop: 20 },
-  headerBadgeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  categoryBadge: { backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB' },
-  categoryBadgeText: { fontSize: 10, fontWeight: '900', color: '#6B7280', letterSpacing: 1 },
-  challengeTitle: { fontSize: 32, fontWeight: '900', color: '#1F2937', letterSpacing: -1.5, lineHeight: 38, marginBottom: 16 },
-  creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroSection: { width: '100%', height: 350 },
+  heroImage: { width: '100%', height: '100%' },
+  heroOverlay: { ...StyleSheet.absoluteFillObject },
+  
+  mainContent: { flex: 1, backgroundColor: '#FFFFFF', borderTopLeftRadius: 40, borderTopRightRadius: 40, marginTop: -40, padding: 24 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  challengeCategoryText: { fontSize: 24, fontWeight: '900', color: '#1F2937', marginBottom: 4 },
+  challengeTitleText: { fontSize: 14, color: '#6B7280', fontWeight: '600' },
+  statusBadge: { backgroundColor: '#E11D48', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  statusBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
+  
+  creatorInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
   creatorAvatar: { width: 32, height: 32, borderRadius: 12, backgroundColor: '#1F2937', justifyContent: 'center', alignItems: 'center' },
-  creatorName: { fontSize: 14, fontWeight: '600', color: '#6B7280', flex: 1 },
-  boldText: { color: '#1F2937', fontWeight: '800' },
-  statusTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: '900', color: '#1F2937', letterSpacing: 0.5 },
-  section: { paddingHorizontal: 20, marginBottom: 24 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { fontSize: 24, fontWeight: '900', color: '#1F2937', letterSpacing: -1, marginBottom: 12 },
-  titleUnderline: { color: '#F97316', fontStyle: 'italic' },
+  creatorNameText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+  descriptionText: { fontSize: 14, color: '#6B7280', lineHeight: 22, marginTop: 20, marginBottom: 24 },
+  
+  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 32 },
+  statCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 24 },
+  statIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
+  statLabelText: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
+  statValueText: { fontSize: 14, fontWeight: '900', color: '#1F2937', marginTop: 2 },
+
+  submissionList: { gap: 12, marginTop: 10 },
+  submissionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 24, borderWidth: 1, borderColor: '#F3F4F6' },
+  subThumbnailBox: { width: 64, height: 64, borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
+  subThumbnail: { width: '100%', height: '100%' },
+  subThumbPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF7ED' },
+  subInfo: { flex: 1, marginLeft: 16 },
+  subTitle: { fontSize: 16, fontWeight: '800', color: '#1F2937' },
+  subMeta: { fontSize: 12, color: '#9CA3AF', marginTop: 4, fontWeight: '600' },
+  viewActionBtn: { marginLeft: 10 },
+  actionCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+
+  headerWrapper: { marginBottom: 20, alignItems: 'flex-start' },
+  headerBadge: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FED7AA', transform: [{ rotate: '-1.5deg' }], elevation: 3, shadowColor: '#F97316', shadowOpacity: 0.1, shadowRadius: 5 },
+  headerTitleText: { fontSize: 20, fontWeight: '900', color: '#1F2937', letterSpacing: -0.5 },
+  headerHighlightText: { color: '#F97316' },
+  headerUnderline: { width: 40, height: 4, backgroundColor: '#F97316', borderRadius: 2, marginTop: 4, marginLeft: 16 },
+
+  section: { paddingHorizontal: 20, marginBottom: 30 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   aboutText: { fontSize: 15, color: '#6B7280', lineHeight: 26, fontWeight: '500' },
   statsContainer: { flexDirection: 'row', marginHorizontal: 20, paddingVertical: 12, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#FED7AA', justifyContent: 'space-around', marginBottom: 24, backgroundColor: '#FFF7ED' },
   statBox: { flex: 1, alignItems: 'center' },
@@ -675,4 +672,13 @@ const styles = StyleSheet.create({
   viewerMediaPlaceholder: { height: 300, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderRadius: 24, borderWidth: 1, borderColor: '#FED7AA', marginVertical: 10 },
   viewerMediaTitle: { fontSize: 20, fontWeight: '900', color: '#1F2937', marginTop: 20 },
   viewerMediaSub: { fontSize: 13, color: '#6B7280', marginTop: 8, fontWeight: '600' },
+  
+  // Timeline Styles
+  timelineContainer: { marginTop: 10, paddingLeft: 10 },
+  timelineLine: { position: 'absolute', left: 21, top: 20, bottom: 20, width: 2, backgroundColor: '#FED7AA', borderRadius: 1 },
+  timelineItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  timelineDot: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', zIndex: 1, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
+  timelineContent: { marginLeft: 20, flex: 1 },
+  timelineLabel: { fontSize: 10, fontWeight: '900', color: '#9CA3AF', letterSpacing: 1.5 },
+  timelineDate: { fontSize: 15, fontWeight: '800', color: '#1F2937', marginTop: 2 },
 });

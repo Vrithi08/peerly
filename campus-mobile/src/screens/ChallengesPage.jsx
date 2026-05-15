@@ -179,7 +179,7 @@ export default function ChallengesPage({ navigation }) {
   }, [challenges, searchQuery, selectedCategory, selectedStatus]);
 
   const getTimeRemaining = (item) => {
-    const deadlineStr = item.status === 'OPEN' ? item.submissionDeadline : item.votingDeadline;
+    const deadlineStr = item.submissionDeadline;
     if (!deadlineStr || item.status === 'CLOSED') return 'Closed';
     
     const now = new Date().getTime();
@@ -187,7 +187,7 @@ export default function ChallengesPage({ navigation }) {
     if (isNaN(end)) return 'TBD';
     
     const diff = end - now;
-    if (diff <= 0) return 'Ended';
+    if (diff <= 0) return 'Submissions Ended';
     
     const d = Math.floor(diff / (1000 * 60 * 60 * 24));
     const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
