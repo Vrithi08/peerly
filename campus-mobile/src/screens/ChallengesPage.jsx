@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 // Premium Arena Refresh 1.2
 import { 
   View, 
@@ -98,17 +99,24 @@ export default function ChallengesPage({ navigation }) {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    fetchChallenges();
-    loadBookmarks();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchChallenges();
+      loadBookmarks();
+    }, [])
+  );
 
   const loadBookmarks = async () => {
     try {
-      const saved = await AsyncStorage.getItem('bookmarks');
-      if (saved) {
-        const ids = JSON.parse(saved);
-        setBookmarkedIds(Array.isArray(ids) ? ids : []);
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
+        const saved = await AsyncStorage.getItem(`bookmarks_${userEmail}`);
+        if (saved) {
+          const ids = JSON.parse(saved);
+          setBookmarkedIds(Array.isArray(ids) ? ids : []);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -118,9 +126,17 @@ export default function ChallengesPage({ navigation }) {
   };
 
   useEffect(() => {
-    if (hasLoaded.current) {
-      AsyncStorage.setItem('bookmarks', JSON.stringify(bookmarkedIds));
-    }
+    const saveBookmarks = async () => {
+      if (hasLoaded.current) {
+        const userStr = await AsyncStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const userEmail = user.email || 'guest';
+          await AsyncStorage.setItem(`bookmarks_${userEmail}`, JSON.stringify(bookmarkedIds));
+        }
+      }
+    };
+    saveBookmarks();
   }, [bookmarkedIds]);
 
   const fetchChallenges = async () => {

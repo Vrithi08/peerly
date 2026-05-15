@@ -69,7 +69,9 @@ public class HelpService {
         HelpPost post = helpPostRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Help post not found"));
 
+        System.out.println("Processing reply for Post ID: " + postId + " by " + email);
         if (post.isResolved()) {
+            System.err.println("Rejected: Post resolved");
             throw new RuntimeException("This post is already resolved");
         }
 

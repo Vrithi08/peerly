@@ -35,6 +35,7 @@ public class ChallengeService {
         challenge.setDescription(request.getDescription());
         challenge.setCategory(request.getCategory());
         challenge.setSubmissionDeadline(request.getSubmissionDeadline());
+        challenge.setVotingStartDate(request.getVotingStartDate());
         challenge.setVotingDeadline(request.getVotingDeadline());
         challenge.setCreatedBy(user);
         challenge.setImageUrl(request.getImageUrl());
@@ -71,6 +72,7 @@ public class ChallengeService {
         challenge.setDescription(request.getDescription());
         challenge.setCategory(request.getCategory());
         challenge.setSubmissionDeadline(request.getSubmissionDeadline());
+        challenge.setVotingStartDate(request.getVotingStartDate());
         challenge.setVotingDeadline(request.getVotingDeadline());
         challenge.setImageUrl(request.getImageUrl());
 
@@ -100,6 +102,7 @@ public class ChallengeService {
         response.setCreatedByName(challenge.getCreatedBy().getName());
         response.setCreatedByEmail(challenge.getCreatedBy().getEmail());
         response.setSubmissionDeadline(challenge.getSubmissionDeadline());
+        response.setVotingStartDate(challenge.getVotingStartDate());
         response.setVotingDeadline(challenge.getVotingDeadline());
         response.setCreatedAt(challenge.getCreatedAt());
         response.setImageUrl(challenge.getImageUrl());

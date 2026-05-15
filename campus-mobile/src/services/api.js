@@ -8,9 +8,9 @@ export const API_BASE_URL = Platform.OS === 'web'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000, // Increased global timeout to 60s
   headers: {
-    'Content-Type': 'application/json',
+    // We remove the global Content-Type to allow multipart/form-data to be auto-detected
   },
 });
 
@@ -44,7 +44,9 @@ api.interceptors.response.use(
 
 export const authService = {
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post('/auth/login', { email, password }, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     if (response.data.token) {
       await AsyncStorage.setItem('token', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data));
@@ -52,7 +54,9 @@ export const authService = {
     return response.data;
   },
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/auth/register', userData, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   },
   logout: async () => {
@@ -102,7 +106,9 @@ export const challengeService = {
     return response.data;
   },
   create: async (challengeData) => {
-    const response = await api.post('/challenges', challengeData);
+    const response = await api.post('/challenges', challengeData, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   }
 };
@@ -112,10 +118,15 @@ export const submissionService = {
     const response = await api.get(`/submissions/${challengeId}`);
     return response.data;
   },
+  getMySubmission: async (challengeId) => {
+    const response = await api.get(`/submissions/${challengeId}/my`);
+    return response.data;
+  },
   create: async (challengeId, data) => {
     if (data.type === 'text') {
       const response = await api.post(`/submissions/${challengeId}/text`, null, {
-        params: { content: data.content }
+        params: { content: data.content },
+        headers: { 'Content-Type': 'application/json' }
       });
       return response.data;
     } else {
@@ -137,20 +148,24 @@ export const submissionService = {
       };
 
       const formData = new FormData();
+      const uri = data.attachmentUri;
       
-      // On Android, the URI might need careful handling
-      const fileUri = Platform.OS === 'android' ? data.attachmentUri : data.attachmentUri.replace('file://', '');
+      // Extract filename and extension from URI
+      const uriParts = uri.split('/');
+      const uriName = uriParts[uriParts.length - 1];
+      const uriType = uriName.split('.').pop();
       
-      formData.append('file', {
-        uri: fileUri,
-        type: getMimeType(data.type),
-        name: getFileName(data.type),
-      });
+      const filePayload = {
+        uri: uri,
+        type: data.mimeType || `video/${uriType}` || 'video/mp4',
+        name: data.fileName || uriName || `submission.${uriType}` || 'video.mp4',
+      };
+
+      console.log('Final Payload for multipart:', filePayload);
+      formData.append('file', filePayload);
 
       const response = await api.post(`/submissions/${challengeId}/file`, formData, {
-        headers: { 
-          'Accept': 'application/json'
-        },
+        timeout: 120000 
       });
       return response.data;
     }
@@ -174,11 +189,15 @@ export const helpService = {
     return response.data;
   },
   createPost: async (postData) => {
-    const response = await api.post('/help/posts', postData);
+    const response = await api.post('/help/posts', postData, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   },
   replyToPost: async (postId, replyData) => {
-    const response = await api.post(`/help/posts/${postId}/replies`, replyData);
+    const response = await api.post(`/help/posts/${postId}/replies`, replyData, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   },
   acceptReply: async (replyId) => {
@@ -194,15 +213,18 @@ export const helpService = {
 export const uploadService = {
   uploadFile: async (file) => {
     const formData = new FormData();
+    
+    const uriParts = file.uri.split('/');
+    const uriName = uriParts[uriParts.length - 1];
+    
     formData.append('file', {
       uri: file.uri,
-      type: file.type || 'image/jpeg',
-      name: file.fileName || 'upload.jpg',
+      type: file.type || file.mimeType || 'image/jpeg',
+      name: file.fileName || uriName || 'upload.jpg',
     });
+
     const response = await api.post('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      timeout: 120000 // 2 minutes for file uploads
     });
     return response.data;
   }
@@ -226,6 +248,13 @@ export const notificationService = {
   },
   markAsRead: async (id) => {
     const response = await api.put(`/notifications/${id}/read`);
+    return response.data;
+  }
+};
+
+export const platformStatsService = {
+  getStats: async () => {
+    const response = await api.get('/stats/platform');
     return response.data;
   }
 };

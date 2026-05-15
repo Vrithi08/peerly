@@ -30,11 +30,14 @@ public class ChallengeScheduler {
         LocalDateTime now = LocalDateTime.now();
         System.out.println(">>> Scheduler running at: " + now);
 
-        // OPEN → VOTING: submission deadline has passed
+        // OPEN → VOTING: voting start date (or submission deadline) has passed
         List<Challenge> openChallenges = challengeRepository.findByStatus(ChallengeStatus.OPEN);
         for (Challenge challenge : openChallenges) {
-            if (challenge.getSubmissionDeadline() != null
-                    && now.isAfter(challenge.getSubmissionDeadline())) {
+            LocalDateTime triggerDate = challenge.getVotingStartDate() != null 
+                    ? challenge.getVotingStartDate() 
+                    : challenge.getSubmissionDeadline();
+                    
+            if (triggerDate != null && now.isAfter(triggerDate)) {
                 challenge.setStatus(ChallengeStatus.VOTING);
                 challengeRepository.save(challenge);
                 System.out.println(">>> Challenge " + challenge.getId()

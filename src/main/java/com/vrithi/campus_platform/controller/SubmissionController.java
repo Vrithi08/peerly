@@ -47,4 +47,12 @@ public class SubmissionController {
         return ResponseEntity.ok(
                 submissionService.getSubmissionsByChallenge(challengeId));
     }
+
+    @GetMapping("/{challengeId}/my")
+    public ResponseEntity<SubmissionResponse> getMySubmission(
+            @PathVariable Long challengeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                submissionService.getMySubmission(challengeId, userDetails.getUsername()));
+    }
 }

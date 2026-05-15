@@ -13,6 +13,7 @@ public class ChallengeResponse {
     private String createdByName;
     private String createdByEmail;
     private LocalDateTime submissionDeadline;
+    private LocalDateTime votingStartDate;
     private LocalDateTime votingDeadline;
     private LocalDateTime createdAt;
     private int participantsCount;
@@ -37,6 +38,8 @@ public class ChallengeResponse {
     public void setCreatedByEmail(String createdByEmail) { this.createdByEmail = createdByEmail; }
     public LocalDateTime getSubmissionDeadline() { return submissionDeadline; }
     public void setSubmissionDeadline(LocalDateTime submissionDeadline) { this.submissionDeadline = submissionDeadline; }
+    public LocalDateTime getVotingStartDate() { return votingStartDate; }
+    public void setVotingStartDate(LocalDateTime votingStartDate) { this.votingStartDate = votingStartDate; }
     public LocalDateTime getVotingDeadline() { return votingDeadline; }
     public void setVotingDeadline(LocalDateTime votingDeadline) { this.votingDeadline = votingDeadline; }
     public LocalDateTime getCreatedAt() { return createdAt; }

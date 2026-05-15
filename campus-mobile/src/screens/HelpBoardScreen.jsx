@@ -309,10 +309,10 @@ export default function HelpBoardScreen({ navigation }) {
 
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Search size={20} color="#9CA3AF" />
+          <Search size={20} color="#F97316" />
           <TextInput 
             style={styles.searchInput}
-            placeholder="Search by subject or topic..."
+            placeholder="Search topics or solutions..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -491,7 +491,7 @@ export default function HelpBoardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   blob: { position: 'absolute', borderRadius: 200 },
-  header: { paddingHorizontal: 24, paddingVertical: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 24, paddingTop: 10, paddingBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 28, fontWeight: '900', color: '#1F2937', letterSpacing: -1 },
   subtitle: { fontSize: 14, color: '#6B7280', fontWeight: '600', marginTop: 2 },
   
@@ -503,14 +503,24 @@ const styles = StyleSheet.create({
 
   searchContainer: { paddingHorizontal: 24, marginBottom: 20, flexDirection: 'row', gap: 12 },
   searchBar: { 
-    flex: 1, height: 54, backgroundColor: '#F9FAFB', borderRadius: 18, 
+    flex: 1, height: 58, backgroundColor: '#FFFFFF', borderRadius: 20, 
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, 
-    borderWidth: 1, borderColor: '#E5E7EB' 
+    borderWidth: 2, borderColor: '#FED7AA',
+    elevation: 3, shadowColor: '#F97316', shadowOpacity: 0.05, shadowRadius: 10
   },
-  searchInput: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '600', color: '#1F2937' },
+  searchInput: { 
+    flex: 1, 
+    marginLeft: 12, 
+    fontSize: 15, 
+    fontWeight: '800', 
+    color: '#1F2937',
+    paddingVertical: 0,
+    height: '100%'
+  },
   filterBtn: { 
-    width: 54, height: 54, backgroundColor: '#F9FAFB', borderRadius: 18, 
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' 
+    width: 58, height: 58, backgroundColor: '#FFFFFF', borderRadius: 20, 
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FED7AA',
+    elevation: 3, shadowColor: '#F97316', shadowOpacity: 0.05, shadowRadius: 10
   },
 
   filterScroll: { paddingHorizontal: 24, paddingBottom: 15 },

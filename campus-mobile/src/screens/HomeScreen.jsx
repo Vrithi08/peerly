@@ -15,7 +15,7 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { challengeService, leaderboardService } from '../services/api';
+import { challengeService, leaderboardService, platformStatsService } from '../services/api';
 import { 
   Trophy, 
   Flame, 
@@ -208,6 +208,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('Peer');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [stats, setStats] = useState({ challengesCount: 0, usersCount: 0, submissionsCount: 0, votesCount: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -230,17 +231,25 @@ export default function HomeScreen({ navigation, onLogout }) {
 
   const fetchData = async () => {
     try {
-      const [challengesData, leaderboardData] = await Promise.all([
+      const [challengesData, leaderboardData, statsData] = await Promise.all([
         challengeService.getAll(),
-        leaderboardService.getGlobal()
+        leaderboardService.getGlobal(),
+        platformStatsService.getStats()
       ]);
       setTrending(challengesData.slice(0, 4));
       setLeaderboard(leaderboardData.slice(0, 5));
+      setStats(statsData);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatNumber = (num) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
   };
 
   return (
@@ -306,19 +315,19 @@ export default function HomeScreen({ navigation, onLogout }) {
         <SlideUpView delay={400} style={styles.statsSection}>
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>1.2k</Text>
+              <Text style={styles.statVal}>{formatNumber(stats.challengesCount)}</Text>
               <Text style={styles.statLabel}>Challenges</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>45k</Text>
+              <Text style={styles.statVal}>{formatNumber(stats.usersCount)}</Text>
               <Text style={styles.statLabel}>Users</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>80k</Text>
+              <Text style={styles.statVal}>{formatNumber(stats.submissionsCount)}</Text>
               <Text style={styles.statLabel}>Submits</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>280k</Text>
+              <Text style={styles.statVal}>{formatNumber(stats.votesCount)}</Text>
               <Text style={styles.statLabel}>Votes</Text>
             </View>
           </View>

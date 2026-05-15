@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -43,9 +44,14 @@ import {
   Target,
   Bot,
   FileText,
-  X
+  X,
+  Video,
+  Music,
+  File
 } from 'lucide-react-native';
 import ThemedAlert from '../components/ThemedAlert';
+import AudioPlayer from '../components/AudioPlayer';
+import VideoPlayer from '../components/VideoPlayer';
 
 const { width } = Dimensions.get('window');
 
@@ -94,19 +100,29 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     setAlertConfig({ visible: true, title, message, type });
   };
 
-  useEffect(() => { 
-    fetchData(); 
-    checkBookmarkStatus();
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(); 
+      checkBookmarkStatus();
+    }, [challengeId])
+  );
+
+  useEffect(() => {
     const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [challengeId]);
 
   const checkBookmarkStatus = async () => {
     try {
-      const saved = await AsyncStorage.getItem('bookmarks');
-      if (saved) {
-        const ids = JSON.parse(saved);
-        setIsBookmarked(ids.includes(challengeId));
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
+        const saved = await AsyncStorage.getItem(`bookmarks_${userEmail}`);
+        if (saved) {
+          const ids = JSON.parse(saved);
+          setIsBookmarked(ids.includes(challengeId));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -115,15 +131,20 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
 
   const toggleBookmark = async () => {
     try {
-      const saved = await AsyncStorage.getItem('bookmarks');
-      let ids = saved ? JSON.parse(saved) : [];
-      if (isBookmarked) {
-        ids = ids.filter(id => id !== challengeId);
-      } else {
-        ids.push(challengeId);
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
+        const saved = await AsyncStorage.getItem(`bookmarks_${userEmail}`);
+        let ids = saved ? JSON.parse(saved) : [];
+        if (isBookmarked) {
+          ids = ids.filter(id => id !== challengeId);
+        } else {
+          ids.push(challengeId);
+        }
+        await AsyncStorage.setItem(`bookmarks_${userEmail}`, JSON.stringify(ids));
+        setIsBookmarked(!isBookmarked);
       }
-      await AsyncStorage.setItem('bookmarks', JSON.stringify(ids));
-      setIsBookmarked(!isBookmarked);
     } catch (e) {
       console.error(e);
     }
@@ -149,11 +170,31 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
   const updateCountdown = () => {
     if (!challenge) return;
     const now = new Date().getTime();
-    const deadlineStr = challenge.status === 'OPEN' ? challenge.submissionDeadline : challenge.votingDeadline;
+    
+    let deadlineStr = challenge.votingDeadline;
+    let label = '';
+    
+    if (challenge.status === 'OPEN') {
+      const subEnd = new Date(challenge.submissionDeadline?.replace(' ', 'T')).getTime();
+      if (now < subEnd) {
+        deadlineStr = challenge.submissionDeadline;
+      } else if (challenge.votingStartDate) {
+        const voteStart = new Date(challenge.votingStartDate.replace(' ', 'T')).getTime();
+        if (now < voteStart) {
+          deadlineStr = challenge.votingStartDate;
+          label = 'Voting starts ';
+        } else {
+          setCountdown('VOTING SOON');
+          return;
+        }
+      }
+    }
+
     if (!deadlineStr) {
       setCountdown('--');
       return;
     }
+
     const end = new Date(deadlineStr.replace(' ', 'T')).getTime();
     if (isNaN(end)) {
       setCountdown('--');
@@ -171,11 +212,13 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const s = Math.floor((diff % (1000 * 60)) / 1000);
     
+    let timeStr = '';
     if (d > 0) {
-      setCountdown(`${d}d ${h}h`);
+      timeStr = `${d}d ${h}h`;
     } else {
-      setCountdown(`${h}h ${m}m ${s}s`);
+      timeStr = `${h}h ${m}m ${s}s`;
     }
+    setCountdown(label + timeStr);
   };
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
@@ -314,8 +357,23 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                   onPress={() => setSelectedSubmission(sub)}
                 >
                   <View style={styles.subPreviewBox}>
-                    {getPreviewUrl(sub) ? (
+                    {(sub.contentType === 'IMAGE' || sub.type?.toUpperCase() === 'IMAGE') && getPreviewUrl(sub) ? (
                       <Image source={{ uri: getPreviewUrl(sub) }} style={styles.subImage} />
+                    ) : (sub.contentType === 'VIDEO' || sub.type?.toUpperCase() === 'VIDEO') ? (
+                      <View style={styles.subTextPlaceholder}>
+                        <Video size={32} color="#F97316" style={{ marginBottom: 8 }} />
+                        <Text style={styles.subTextSnippet}>Video Entry</Text>
+                      </View>
+                    ) : (sub.contentType === 'AUDIO' || sub.type?.toUpperCase() === 'AUDIO') ? (
+                      <View style={styles.subTextPlaceholder}>
+                        <Music size={32} color="#F97316" style={{ marginBottom: 8 }} />
+                        <Text style={styles.subTextSnippet}>Audio Track</Text>
+                      </View>
+                    ) : (sub.contentType === 'DOCUMENT' || sub.type?.toUpperCase() === 'DOCUMENT') ? (
+                      <View style={styles.subTextPlaceholder}>
+                        <File size={32} color="#F97316" style={{ marginBottom: 8 }} />
+                        <Text style={styles.subTextSnippet} numberOfLines={1}>{sub.name || 'Document'}</Text>
+                      </View>
                     ) : (
                       <View style={styles.subTextPlaceholder}>
                         <FileText size={20} color="#FED7AA" style={{ marginBottom: 8 }} />
@@ -406,12 +464,20 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                 <View style={styles.viewerTextContainer}>
                   <Text style={styles.viewerText}>{selectedSubmission?.textContent || selectedSubmission?.content}</Text>
                 </View>
-              ) : getPreviewUrl(selectedSubmission) ? (
+              ) : (selectedSubmission?.contentType === 'IMAGE' || selectedSubmission?.type?.toUpperCase() === 'IMAGE') && getPreviewUrl(selectedSubmission) ? (
                 <Image 
                   source={{ uri: getPreviewUrl(selectedSubmission) }} 
                   style={styles.viewerImage} 
                   resizeMode="contain"
                 />
+              ) : (selectedSubmission?.contentType === 'VIDEO' || selectedSubmission?.type?.toUpperCase() === 'VIDEO') && getPreviewUrl(selectedSubmission) ? (
+                <View style={{ marginBottom: 24 }}>
+                  <VideoPlayer url={getPreviewUrl(selectedSubmission)} />
+                </View>
+              ) : (selectedSubmission?.contentType === 'AUDIO' || selectedSubmission?.type?.toUpperCase() === 'AUDIO') && getPreviewUrl(selectedSubmission) ? (
+                <View style={{ marginBottom: 24 }}>
+                  <AudioPlayer url={getPreviewUrl(selectedSubmission)} />
+                </View>
               ) : (
                 <View style={styles.viewerTextContainer}>
                   <Text style={styles.viewerText}>{selectedSubmission?.textContent || selectedSubmission?.content || selectedSubmission?.description || 'No content preview available'}</Text>
@@ -606,4 +672,7 @@ const styles = StyleSheet.create({
   modalActionBtn: { width: '100%', height: 56, borderRadius: 16, overflow: 'hidden' },
   modalActionGradient: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12 },
   modalActionText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  viewerMediaPlaceholder: { height: 300, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderRadius: 24, borderWidth: 1, borderColor: '#FED7AA', marginVertical: 10 },
+  viewerMediaTitle: { fontSize: 20, fontWeight: '900', color: '#1F2937', marginTop: 20 },
+  viewerMediaSub: { fontSize: 13, color: '#6B7280', marginTop: 8, fontWeight: '600' },
 });

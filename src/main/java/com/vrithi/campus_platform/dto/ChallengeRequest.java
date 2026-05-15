@@ -24,6 +24,9 @@ public class ChallengeRequest {
     @Future(message = "Voting deadline must be in the future")
     private LocalDateTime votingDeadline;
 
+    @NotNull(message = "Voting start date is required")
+    private LocalDateTime votingStartDate;
+
     private String imageUrl;
 
     // Getters and Setters
@@ -37,6 +40,8 @@ public class ChallengeRequest {
     public void setSubmissionDeadline(LocalDateTime submissionDeadline) { this.submissionDeadline = submissionDeadline; }
     public LocalDateTime getVotingDeadline() { return votingDeadline; }
     public void setVotingDeadline(LocalDateTime votingDeadline) { this.votingDeadline = votingDeadline; }
+    public LocalDateTime getVotingStartDate() { return votingStartDate; }
+    public void setVotingStartDate(LocalDateTime votingStartDate) { this.votingStartDate = votingStartDate; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

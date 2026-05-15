@@ -61,94 +61,6 @@ import { challengeService, submissionService } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-export default function SubmissionScreen({ route, navigation }) {
-  const { challengeId, challengeTitle } = route.params;
-  
-  // State
-  const [challenge, setChallenge] = useState(null);
-  const [existingSubmission, setExistingSubmission] = useState(null);
-  const [submissionType, setSubmissionType] = useState('text'); // 'text', 'image', 'audio'
-  const [content, setContent] = useState('');
-  const [attachments, setAttachments] = useState([]); // Multiple for image
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [countdown, setCountdown] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const showAlert = (title, message, type = 'info') => {
-    setAlertConfig({ visible: true, title, message, type });
-  };
-
-  useEffect(() => {
-    fetchData();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-  }, [submissionType]);
-
-  const fetchData = async () => {
-    try {
-      const [challengeData, mySubs] = await Promise.all([
-        challengeService.getById(challengeId),
-        submissionService.getByChallengeId(challengeId)
-      ]);
-      setChallenge(challengeData);
-      if (mySubs && mySubs.length > 0) {
-        setExistingSubmission(mySubs[0]);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const parseDate = (dateStr) => {
-    if (!dateStr) return null;
-    try {
-      const normalized = dateStr.toString().replace(' ', 'T');
-      const date = new Date(normalized);
-      return isNaN(date.getTime()) ? null : date;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const updateCountdown = () => {
-    if (!challenge) return;
-    const deadline = challenge.submissionDeadline || challenge.endDate;
-    const end = parseDate(deadline);
-    if (!end) { setCountdown('--'); return; }
-
-    const now = new Date().getTime();
-    const diff = end.getTime() - now;
-    
-    if (diff <= 0) { 
-      setCountdown('CLOSED'); 
-      return; 
-    }
-
-    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const s = Math.floor((diff % (1000 * 60)) / 1000);
-    setCountdown(`${h}h ${m}m ${s}s`);
-  };
-
-  return (
-    <Animated.View style={[style, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {children}
-    </Animated.View>
-  );
-};
-
 // --- Victory Robot (Donut Style) ---
 const VictoryRobot = () => {
   const jumpAnim = useRef(new Animated.Value(0)).current;
@@ -193,6 +105,85 @@ const VictoryRobot = () => {
   );
 };
 
+export default function SubmissionScreen({ route, navigation }) {
+  const { challengeId, challengeTitle } = route.params;
+  
+  // State
+  const [challenge, setChallenge] = useState(null);
+  const [existingSubmission, setExistingSubmission] = useState(null);
+  const [submissionType, setSubmissionType] = useState('text'); // 'text', 'image', 'audio'
+  const [content, setContent] = useState('');
+  const [attachments, setAttachments] = useState([]); // Multiple for image
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [countdown, setCountdown] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
+  useEffect(() => {
+    fetchData();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, [submissionType]);
+
+  const fetchData = async () => {
+    try {
+      const [challengeData, mySub] = await Promise.all([
+        challengeService.getById(challengeId),
+        submissionService.getMySubmission(challengeId)
+      ]);
+      setChallenge(challengeData);
+      setExistingSubmission(mySub);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const normalized = dateStr.toString().replace(' ', 'T');
+      const date = new Date(normalized);
+      return isNaN(date.getTime()) ? null : date;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const updateCountdown = () => {
+    if (!challenge) return;
+    const deadline = challenge.submissionDeadline || challenge.endDate;
+    const end = parseDate(deadline);
+    if (!end) { setCountdown('--'); return; }
+
+    const now = new Date().getTime();
+    const diff = end.getTime() - now;
+    
+    if (diff <= 0) { 
+      setCountdown('CLOSED'); 
+      return; 
+    }
+
+    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
+    setCountdown(`${h}h ${m}m ${s}s`);
+  };
+
   const pickImage = async () => {
     try {
       console.log('Picking image...');
@@ -208,7 +199,9 @@ const VictoryRobot = () => {
         const newAssets = result.assets.map(asset => ({
           id: Math.random().toString(36).substr(2, 9),
           uri: asset.uri,
-          type: 'image'
+          type: 'image',
+          mimeType: asset.mimeType || 'image/jpeg',
+          fileName: asset.fileName || `img_${Date.now()}.jpg`
         }));
         setAttachments([...attachments, ...newAssets].slice(0, 4));
       }
@@ -233,7 +226,9 @@ const VictoryRobot = () => {
         const newAssets = result.assets.map(asset => ({
           id: Math.random().toString(36).substr(2, 9),
           uri: asset.uri,
-          type: 'video'
+          type: 'video',
+          mimeType: asset.mimeType || 'video/mp4',
+          fileName: asset.fileName || `vid_${Date.now()}.mp4`
         }));
         setAttachments([...attachments, ...newAssets].slice(0, 1)); // One video at a time
       }
@@ -243,10 +238,10 @@ const VictoryRobot = () => {
     }
   };
 
-  const pickDocument = async () => {
+  const pickAudio = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: 'audio/*',
         multiple: false
       });
 
@@ -255,8 +250,31 @@ const VictoryRobot = () => {
         setAttachments([{
           id: Math.random().toString(36).substr(2, 9),
           uri: asset.uri,
-          name: asset.name,
-          type: 'document'
+          name: asset.name || asset.fileName || `audio_${Date.now()}.mp3`,
+          type: 'audio',
+          mimeType: asset.mimeType || 'audio/mpeg'
+        }]);
+      }
+    } catch (err) {
+      showAlert('PICK FAILED', 'Your anthem could not be retrieved from the vault!', 'error');
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-powerpoint', 'text/plain'],
+        multiple: false
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        setAttachments([{
+          id: Math.random().toString(36).substr(2, 9),
+          uri: asset.uri,
+          name: asset.name || asset.fileName || 'document.pdf',
+          type: 'document',
+          mimeType: asset.mimeType || 'application/pdf'
         }]);
       }
     } catch (err) {
@@ -291,7 +309,9 @@ const VictoryRobot = () => {
           submissionService.create(challengeId, { 
             content: '',
             attachmentUri: asset.uri,
-            type: submissionType
+            type: submissionType,
+            mimeType: asset.mimeType,
+            fileName: asset.fileName || asset.name
           })
         );
         await Promise.all(uploadPromises);
@@ -301,9 +321,18 @@ const VictoryRobot = () => {
     } catch (err) {
       console.error('Submission Error:', err);
       const status = err.response?.status;
-      const serverData = err.response?.data;
-      const errorMsg = serverData?.message || serverData || err.message || 'The arena walls held strong. Please try conquering again.';
-      showAlert('SUBMISSION FAILED', `(Code: ${status}) ${errorMsg}`, 'error');
+      
+      let friendlyMsg = 'The arena walls held strong. Please try conquering again.';
+      
+      if (status === 400) {
+        friendlyMsg = 'Your submission seems to be missing something or the challenge is no longer accepting entries.';
+      } else if (status === 413) {
+        friendlyMsg = 'This file is a bit too heavy for the arena! Try a smaller one.';
+      } else if (err.message?.includes('timeout')) {
+        friendlyMsg = 'The connection timed out. Please check your signal and try again.';
+      }
+      
+      showAlert('SUBMISSION FAILED', friendlyMsg, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -326,8 +355,48 @@ const VictoryRobot = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        {/* ACTIVE SUBMISSION FORM */}
-        <View style={styles.formContainer}>
+        {existingSubmission ? (
+          <View style={styles.conqueredContainer}>
+            <View style={styles.conqueredIllustration}>
+              <VictoryRobot />
+            </View>
+            
+            <View style={styles.conqueredBadge}>
+              <Sparkles size={16} color="#B45309" />
+              <Text style={styles.conqueredBadgeText}>CHAMPION'S MARK DETECTED</Text>
+            </View>
+
+            <Text style={styles.conqueredTitle}>ARENA CONQUERED!</Text>
+            <Text style={styles.conqueredSubtitle}>
+              You've already left your mark in this arena. The judges are currently reviewing your conquest! 
+              {challenge?.status === 'VOTING' ? " \n\nGo forth and cast your votes for other warriors!" : " \n\nSit back and watch the others fight for glory."}
+            </Text>
+            
+            <View style={styles.conqueredInfoBox}>
+              <View style={styles.conqueredInfoInner}>
+                <Trophy size={20} color="#F97316" />
+                <View>
+                  <Text style={styles.conqueredInfoLabel}>CONQUEST DATE</Text>
+                  <Text style={styles.conqueredInfoValue}>{new Date(existingSubmission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</Text>
+                </View>
+              </View>
+              <ChevronRight size={20} color="#D1D5DB" />
+            </View>
+
+            <TouchableOpacity 
+              style={styles.arenaActionBtn}
+              onPress={() => navigation.goBack()}
+            >
+              <LinearGradient
+                colors={['#F97316', '#EA580C']}
+                style={styles.arenaActionGradient}
+              >
+                <Text style={styles.arenaActionText}>RETURN TO ARENA FEED</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.formContainer}>
             
             {/* Step 1: Type Selector (Chips) */}
             <Text style={styles.formLabel}>What type of entry are you submitting?</Text>
@@ -439,14 +508,26 @@ const VictoryRobot = () => {
                       </TouchableOpacity>
                     )}
                   </ScrollView>
-                  <Text style={styles.uploadHelper}>Support PDF, DOC, DOCX (Max 20MB)</Text>
+                  <Text style={styles.uploadHelper}>Support PDF, DOC, DOCX, TXT (Max 20MB)</Text>
                 </View>
               ) : (
                 <View style={styles.audioSection}>
-                  <TouchableOpacity style={styles.audioPicker} onPress={() => showAlert('AUDIO ARENA', 'Audio selection is coming soon to this arena!', 'info')}>
-                    <Music size={32} color="#9CA3AF" />
-                    <Text style={styles.audioPickerText}>Choose Audio File</Text>
-                  </TouchableOpacity>
+                  {attachments.length > 0 ? (
+                    <View style={styles.audioPreviewBox}>
+                      <View style={styles.audioInfo}>
+                        <Music size={24} color="#F97316" />
+                        <Text style={styles.audioName} numberOfLines={1}>{attachments[0].name}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeAttachment(attachments[0].id)}>
+                        <X size={20} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.audioPicker} onPress={pickAudio}>
+                      <Music size={32} color="#9CA3AF" />
+                      <Text style={styles.audioPickerText}>Choose Audio File</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </Animated.View>
@@ -487,7 +568,7 @@ const VictoryRobot = () => {
               <View style={styles.rulesList}>
                 <View style={styles.ruleItem}>
                   <CheckCircle2 size={12} color="#F97316" />
-                  <Text style={styles.ruleText}>Multiple entries are encouraged! Submit as many as you like.</Text>
+                  <Text style={styles.ruleText}>One entry per warrior. Make your submission count!</Text>
                 </View>
                 <View style={styles.ruleItem}>
                   <CheckCircle2 size={12} color="#F97316" />
@@ -500,7 +581,8 @@ const VictoryRobot = () => {
               </View>
             </View>
           </View>
-        </ScrollView>
+        )}
+      </ScrollView>
 
         {/* SUCCESS MODAL (Donut Style) */}
         <Modal visible={showSuccessModal} transparent animationType="slide">
@@ -537,7 +619,7 @@ const VictoryRobot = () => {
         />
       </SafeAreaView>
     );
-  }
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF7ED' },
@@ -615,10 +697,41 @@ const styles = StyleSheet.create({
   addImgText: { fontSize: 11, fontWeight: '800', color: '#9CA3AF' },
   uploadHelper: { fontSize: 11, color: '#6B7280', fontWeight: '700', marginTop: 16 },
 
+  // Conquered Section
+  conqueredContainer: { padding: 24, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 40, borderTopLeftRadius: 80, borderBottomRightRadius: 80, borderWidth: 1, borderColor: '#FED7AA', marginTop: 10, marginHorizontal: 4, elevation: 5, shadowColor: '#F97316', shadowOpacity: 0.1, shadowRadius: 20 },
+  conqueredIllustration: { height: 160, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  conqueredBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF3C7', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100, marginBottom: 20 },
+  conqueredBadgeText: { fontSize: 10, fontWeight: '900', color: '#B45309', letterSpacing: 1 },
+  conqueredTitle: { fontSize: 28, fontWeight: '900', color: '#1F2937', letterSpacing: -0.5, marginBottom: 12 },
+  conqueredSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32, fontWeight: '500', paddingHorizontal: 10 },
+  conqueredInfoBox: { width: '100%', backgroundColor: '#F9FAFB', borderRadius: 28, padding: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, borderWidth: 1, borderColor: '#F3F4F6' },
+  conqueredInfoInner: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  conqueredInfoLabel: { fontSize: 10, fontWeight: '900', color: '#9CA3AF', letterSpacing: 1, marginBottom: 4 },
+  conqueredInfoValue: { fontSize: 15, fontWeight: '800', color: '#1F2937' },
+  arenaActionBtn: { 
+    width: '100%', 
+    height: 64, 
+    borderTopLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8,
+    overflow: 'hidden', 
+    elevation: 8, 
+    shadowColor: '#F97316', 
+    shadowOpacity: 0.3, 
+    shadowRadius: 15, 
+    shadowOffset: { width: 0, height: 8 } 
+  },
+  arenaActionGradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  arenaActionText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', letterSpacing: 1.2 },
+  
   // Audio Section
   audioSection: { },
   audioPicker: { height: 140, backgroundColor: '#FFFFFF', borderRadius: 24, justifyContent: 'center', alignItems: 'center', gap: 12, borderStyle: 'dashed', borderWidth: 2, borderColor: '#FED7AA' },
   audioPickerText: { fontSize: 14, fontWeight: '800', color: '#6B7280' },
+  audioPreviewBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#FED7AA' },
+  audioInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  audioName: { fontSize: 14, fontWeight: '700', color: '#1F2937', flex: 1 },
 
   // Options & Actions
   optionsSection: { marginTop: 10 },

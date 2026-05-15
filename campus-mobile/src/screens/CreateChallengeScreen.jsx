@@ -40,7 +40,8 @@ import {
   Target,
   Image as ImageIcon,
   CheckCircle2,
-  Trophy
+  Trophy,
+  X
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -139,8 +140,9 @@ export default function CreateChallengeScreen({ navigation }) {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('CODING');
   const [submissionDeadline, setSubmissionDeadline] = useState(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+  const [votingStartDate, setVotingStartDate] = useState(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
   const [votingDeadline, setVotingDeadline] = useState(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
-  const [showPicker, setShowPicker] = useState(null); // 'submission' or 'voting'
+  const [showPicker, setShowPicker] = useState(null); // 'submission', 'votingStart', or 'voting'
   const [loading, setLoading] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -173,8 +175,12 @@ export default function CreateChallengeScreen({ navigation }) {
     if (!description.trim()) newErrors.description = 'Description is required';
     else if (description.length < 20) newErrors.description = 'Min 20 characters';
     
-    if (votingDeadline <= submissionDeadline) {
-      newErrors.voting = 'Voting must end after submission';
+    if (votingStartDate < submissionDeadline) {
+      newErrors.votingStart = 'Voting cannot start before submission ends';
+    }
+
+    if (votingDeadline <= votingStartDate) {
+      newErrors.voting = 'Voting must end after it starts';
     }
     
     setErrors(newErrors);
@@ -205,6 +211,7 @@ export default function CreateChallengeScreen({ navigation }) {
         description,
         category,
         submissionDeadline: submissionDeadline.toISOString().substring(0, 19),
+        votingStartDate: votingStartDate.toISOString().substring(0, 19),
         votingDeadline: votingDeadline.toISOString().substring(0, 19),
         status: 'OPEN',
         imageUrl: uploadedUrl
@@ -220,8 +227,21 @@ export default function CreateChallengeScreen({ navigation }) {
 
   const onDateChange = (event, selectedDate) => {
     if (selectedDate) {
-      if (showPicker === 'submission') setSubmissionDeadline(selectedDate);
-      else setVotingDeadline(selectedDate);
+      if (showPicker === 'submission') {
+        setSubmissionDeadline(selectedDate);
+        // Sync voting start if it's now before submission
+        if (votingStartDate < selectedDate) {
+          setVotingStartDate(selectedDate);
+        }
+      } else if (showPicker === 'votingStart') {
+        setVotingStartDate(selectedDate);
+        // Sync voting end if it's now before voting start
+        if (votingDeadline < selectedDate) {
+          setVotingDeadline(new Date(selectedDate.getTime() + 2 * 24 * 60 * 60 * 1000));
+        }
+      } else {
+        setVotingDeadline(selectedDate);
+      }
     }
     if (Platform.OS === 'android') {
       setShowPicker(null);
@@ -359,8 +379,8 @@ export default function CreateChallengeScreen({ navigation }) {
             </View>
           </SlideUpView>
 
-          {/* Field 4 & 5: Deadlines */}
-          <SlideUpView delay={500} style={styles.deadlineRow}>
+          {/* Field 4, 5 & 6: Deadlines */}
+          <View style={styles.deadlineGrid}>
             <View style={styles.fieldWrapper}>
               <Text style={styles.fieldLabel}>SUBMISSION DEADLINE</Text>
               <TouchableOpacity 
@@ -373,6 +393,21 @@ export default function CreateChallengeScreen({ navigation }) {
                 <ChevronRight size={16} color="#FED7AA" />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.fieldLabel}>VOTING START DATE</Text>
+              <TouchableOpacity 
+                activeOpacity={0.7}
+                style={[styles.datePickerBtn, errors.votingStart && styles.inputError]} 
+                onPress={() => setShowPicker('votingStart')}
+              >
+                <Clock size={18} color={errors.votingStart ? '#F43F5E' : '#10B981'} />
+                <Text style={[styles.dateText, errors.votingStart && styles.errorText]}>{votingStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                <ChevronRight size={16} color="#FED7AA" />
+              </TouchableOpacity>
+              {errors.votingStart && <Text style={styles.errorText}>{errors.votingStart}</Text>}
+            </View>
+
             <View style={styles.fieldWrapper}>
               <Text style={styles.fieldLabel}>VOTING DEADLINE</Text>
               <TouchableOpacity 
@@ -384,9 +419,9 @@ export default function CreateChallengeScreen({ navigation }) {
                 <Text style={[styles.dateText, errors.voting && styles.errorText]}>{votingDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                 <ChevronRight size={16} color="#FED7AA" />
               </TouchableOpacity>
+              {errors.voting && <Text style={styles.errorText}>{errors.voting}</Text>}
             </View>
-          </SlideUpView>
-          {errors.voting && <Text style={[styles.errorText, { marginTop: -12, marginBottom: 20 }]}>{errors.voting}</Text>}
+          </View>
 
 
           {showPicker && (
@@ -400,7 +435,7 @@ export default function CreateChallengeScreen({ navigation }) {
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
-                      value={showPicker === 'submission' ? submissionDeadline : votingDeadline}
+                      value={showPicker === 'submission' ? submissionDeadline : (showPicker === 'votingStart' ? votingStartDate : votingDeadline)}
                       mode="date"
                       display="spinner"
                       minimumDate={new Date()}
@@ -414,7 +449,7 @@ export default function CreateChallengeScreen({ navigation }) {
               </Modal>
             ) : (
               <DateTimePicker
-                value={showPicker === 'submission' ? submissionDeadline : votingDeadline}
+                value={showPicker === 'submission' ? submissionDeadline : (showPicker === 'votingStart' ? votingStartDate : votingDeadline)}
                 mode="date"
                 display="default"
                 minimumDate={new Date()}
@@ -607,7 +642,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontWeight: '800', color: '#6B7280', letterSpacing: 0.5 },
   checkDot: { width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
 
-  deadlineRow: { flexDirection: 'column', gap: 10 },
+  deadlineGrid: { flexDirection: 'column', gap: 0 },
   datePickerBtn: { 
     flexDirection: 'row', alignItems: 'center', gap: 12, height: 64, 
     backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#FED7AA', borderRadius: 20, paddingHorizontal: 20,

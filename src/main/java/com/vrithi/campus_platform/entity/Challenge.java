@@ -25,6 +25,7 @@ public class Challenge {
     private User createdBy;
 
     private LocalDateTime submissionDeadline;
+    private LocalDateTime votingStartDate;
     private LocalDateTime votingDeadline;
 
     @Enumerated(EnumType.STRING)
@@ -46,6 +47,8 @@ public class Challenge {
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
     public LocalDateTime getSubmissionDeadline() { return submissionDeadline; }
     public void setSubmissionDeadline(LocalDateTime submissionDeadline) { this.submissionDeadline = submissionDeadline; }
+    public LocalDateTime getVotingStartDate() { return votingStartDate; }
+    public void setVotingStartDate(LocalDateTime votingStartDate) { this.votingStartDate = votingStartDate; }
     public LocalDateTime getVotingDeadline() { return votingDeadline; }
     public void setVotingDeadline(LocalDateTime votingDeadline) { this.votingDeadline = votingDeadline; }
     public ChallengeStatus getStatus() { return status; }

@@ -40,6 +40,8 @@ import {
   Clock,
   ArrowLeft as BackIcon,
   X,
+  XCircle,
+  Info,
   Code as CodeIcon,
   Users as UsersIcon,
   Frown,
@@ -182,22 +184,28 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   const loadBookmarks = async () => {
     try {
-      // Load Arena Bookmarks
-      const savedChallenges = await AsyncStorage.getItem('bookmarks');
-      if (savedChallenges) {
-        const ids = JSON.parse(savedChallenges);
-        const all = await challengeService.getAll();
-        setBookmarkedChallenges(all.filter(c => ids.includes(c.id)));
-      }
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
 
-      // Load Student Sync Bookmarks
-      const savedPostIdsStr = await AsyncStorage.getItem('bookmarked_posts');
-      if (savedPostIdsStr) {
-        const ids = JSON.parse(savedPostIdsStr);
-        const allPosts = await helpService.getAllPosts();
-        setSavedPosts(allPosts.filter(p => ids.includes(p.id)));
-      } else {
-        setSavedPosts([]);
+        // Load Arena Bookmarks
+        const savedChallenges = await AsyncStorage.getItem(`bookmarks_${userEmail}`);
+        if (savedChallenges) {
+          const ids = JSON.parse(savedChallenges);
+          const all = await challengeService.getAll();
+          setBookmarkedChallenges(all.filter(c => ids.includes(c.id)));
+        }
+
+        // Load Student Sync Bookmarks
+        const savedPostIdsStr = await AsyncStorage.getItem(`bookmarked_posts_${userEmail}`);
+        if (savedPostIdsStr) {
+          const ids = JSON.parse(savedPostIdsStr);
+          const allPosts = await helpService.getAllPosts();
+          setSavedPosts(allPosts.filter(p => ids.includes(p.id)));
+        } else {
+          setSavedPosts([]);
+        }
       }
     } catch (e) {
       console.error(e);

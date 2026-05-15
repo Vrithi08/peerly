@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -18,7 +19,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import { helpService, userService, uploadService, api } from '../services/api';
 import { 
   ArrowLeft, 
@@ -36,8 +36,6 @@ import {
   Bookmark,
   Flag,
   ImageIcon,
-  Paperclip,
-  FileText,
   X as CloseIcon,
   Bot,
   Info
@@ -56,7 +54,6 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
   const [confirmModal, setConfirmModal] = useState({ visible: false, replyId: null });
@@ -65,10 +62,12 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
     setAlertConfig({ visible: true, title, message, type });
   };
 
-  useEffect(() => {
-    fetchPost();
-    getCurrentUser();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPost();
+      getCurrentUser();
+    }, [postId])
+  );
 
   const getCurrentUser = async () => {
     const userStr = await AsyncStorage.getItem('user');
@@ -99,39 +98,24 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
 
     if (!result.canceled) {
       setSelectedImage(result.assets[0]);
-      setSelectedFile(null); // Clear file if image picked
-    }
-  };
-
-  const handlePickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true
-      });
-
-      if (!result.canceled) {
-        setSelectedFile(result.assets[0]);
-        setSelectedImage(null); // Clear image if file picked
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
   const handlePostReply = async () => {
-    if (!replyText.trim() && !selectedImage && !selectedFile) return;
+    if (!replyText.trim() && !selectedImage) return;
     
     setSending(true);
     try {
       let mediaUrl = null;
       if (selectedImage) {
-        const uploadRes = await uploadService.uploadFile(selectedImage);
-        mediaUrl = uploadRes.url;
-      } else if (selectedFile) {
-        const uploadRes = await uploadService.uploadFile(selectedFile);
+        const uploadRes = await uploadService.uploadFile({
+          uri: selectedImage.uri,
+          type: selectedImage.mimeType,
+          fileName: selectedImage.fileName || `reply_${Date.now()}.jpg`
+        });
         mediaUrl = uploadRes.url;
       }
+
 
       await helpService.replyToPost(postId, {
         content: replyText,
@@ -139,12 +123,21 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
       });
       setReplyText('');
       setSelectedImage(null);
-      setSelectedFile(null);
       fetchPost();
       showToastMessage('Reply posted! ✨');
     } catch (err) {
       console.error('Post Reply Error:', err);
-      showAlert('REPLY FAILED', 'Your wisdom was lost in the void. Try posting again!', 'error');
+      const status = err.response?.status;
+      
+      let friendlyMsg = 'Your wisdom was lost in the void. Try posting again!';
+      
+      if (status === 400) {
+        friendlyMsg = 'Please ensure your reply is valid before posting.';
+      } else if (err.message?.includes('timeout')) {
+        friendlyMsg = 'Network is a bit slow today. Please try again in a moment.';
+      }
+      
+      showAlert('REPLY FAILED', friendlyMsg, 'error');
     } finally {
       setSending(false);
     }
@@ -183,21 +176,26 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
 
   const handleToggleBookmark = async () => {
     try {
-      const newBookmarkStatus = !isBookmarked;
-      setIsBookmarked(newBookmarkStatus);
-      
-      const bookmarksStr = await AsyncStorage.getItem('bookmarked_posts');
-      let bookmarks = bookmarksStr ? JSON.parse(bookmarksStr) : [];
-      
-      if (newBookmarkStatus) {
-        bookmarks.push(postId);
-        showToastMessage('Post added to saved! 🔖');
-      } else {
-        bookmarks = bookmarks.filter(id => id !== postId);
-        showToastMessage('Removed from saved.');
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
+        const newBookmarkStatus = !isBookmarked;
+        setIsBookmarked(newBookmarkStatus);
+        
+        const bookmarksStr = await AsyncStorage.getItem(`bookmarked_posts_${userEmail}`);
+        let bookmarks = bookmarksStr ? JSON.parse(bookmarksStr) : [];
+        
+        if (newBookmarkStatus) {
+          bookmarks.push(postId);
+          showToastMessage('Post added to saved! 🔖');
+        } else {
+          bookmarks = bookmarks.filter(id => id !== postId);
+          showToastMessage('Removed from saved.');
+        }
+        
+        await AsyncStorage.setItem(`bookmarked_posts_${userEmail}`, JSON.stringify(bookmarks));
       }
-      
-      await AsyncStorage.setItem('bookmarked_posts', JSON.stringify(bookmarks));
     } catch (err) {
       console.error(err);
     }
@@ -209,10 +207,15 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
 
   const checkBookmarkStatus = async () => {
     try {
-      const bookmarksStr = await AsyncStorage.getItem('bookmarked_posts');
-      if (bookmarksStr) {
-        const bookmarks = JSON.parse(bookmarksStr);
-        setIsBookmarked(bookmarks.includes(postId));
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const userEmail = user.email || 'guest';
+        const bookmarksStr = await AsyncStorage.getItem(`bookmarked_posts_${userEmail}`);
+        if (bookmarksStr) {
+          const bookmarks = JSON.parse(bookmarksStr);
+          setIsBookmarked(bookmarks.includes(postId));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -339,24 +342,10 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
             )}
-            {selectedFile && (
-              <View style={styles.filePreviewContainer}>
-                <View style={styles.fileChip}>
-                  <FileText size={16} color="#F97316" />
-                  <Text style={styles.fileChipText} numberOfLines={1}>{selectedFile.name}</Text>
-                  <TouchableOpacity onPress={() => setSelectedFile(null)}>
-                    <CloseIcon size={14} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
             <View style={styles.inputBar}>
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
                   <ImageIcon size={20} color={selectedImage ? '#F97316' : '#6B7280'} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.attachBtn} onPress={handlePickDocument}>
-                  <Paperclip size={20} color={selectedFile ? '#F97316' : '#6B7280'} />
                 </TouchableOpacity>
               </View>
               <TextInput 
@@ -368,9 +357,9 @@ export default function HelpPostDetailsScreen({ route, navigation }) {
                 multiline
               />
               <TouchableOpacity 
-                style={[styles.sendBtn, (!replyText.trim() && !selectedImage && !selectedFile) && { backgroundColor: '#FED7AA' }]}
+                style={[styles.sendBtn, (!replyText.trim() && !selectedImage) && { backgroundColor: '#FED7AA' }]}
                 onPress={handlePostReply}
-                disabled={sending || (!replyText.trim() && !selectedImage && !selectedFile)}
+                disabled={sending || (!replyText.trim() && !selectedImage)}
               >
                 {sending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Send size={20} color="#FFFFFF" />}
               </TouchableOpacity>
