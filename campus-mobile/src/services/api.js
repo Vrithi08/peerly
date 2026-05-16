@@ -2,9 +2,7 @@ import { Platform, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_BASE_URL = Platform.OS === 'web' 
-  ? 'http://localhost:8080/api' 
-  : 'http://192.168.1.6:8080/api';
+export const API_BASE_URL = 'https://peerly-production-242f.up.railway.app/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -135,7 +133,7 @@ export const submissionService = {
       return response.data;
     } else {
       const getMimeType = (type) => {
-        switch(type) {
+        switch (type) {
           case 'audio': return 'audio/mpeg';
           case 'video': return 'video/mp4';
           case 'image': return 'image/jpeg';
@@ -143,7 +141,7 @@ export const submissionService = {
         }
       };
       const getFileName = (type) => {
-        switch(type) {
+        switch (type) {
           case 'audio': return 'audio.mp3';
           case 'video': return 'video.mp4';
           case 'image': return 'upload.jpg';
@@ -153,12 +151,12 @@ export const submissionService = {
 
       const formData = new FormData();
       const uri = data.attachmentUri;
-      
+
       // Extract filename and extension from URI
       const uriParts = uri.split('/');
       const uriName = uriParts[uriParts.length - 1];
       const uriType = uriName.split('.').pop();
-      
+
       const filePayload = {
         uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
         type: data.mimeType || 'video/mp4',
@@ -172,7 +170,7 @@ export const submissionService = {
       formData.append('file', filePayload);
 
       const response = await api.post(`/submissions/${challengeId}/file`, formData, {
-        headers: { 
+        headers: {
           'Accept': 'application/json'
         },
         timeout: 300000 // 5 minutes for video
@@ -223,10 +221,10 @@ export const helpService = {
 export const uploadService = {
   uploadFile: async (file) => {
     const formData = new FormData();
-    
+
     const uriParts = file.uri.split('/');
     const uriName = uriParts[uriParts.length - 1];
-    
+
     formData.append('file', {
       uri: file.uri,
       type: file.type || file.mimeType || 'image/jpeg',
