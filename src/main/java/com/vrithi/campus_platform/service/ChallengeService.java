@@ -91,6 +91,15 @@ public class ChallengeService {
         challengeRepository.delete(challenge);
     }
 
+    // Get trending challenge (most submissions)
+    public ChallengeResponse getTrendingChallenge() {
+        List<Challenge> trending = challengeRepository.findTrendingChallenges();
+        if (trending.isEmpty()) {
+            return null;
+        }
+        return mapToResponse(trending.get(0));
+    }
+
     // Helper — convert Entity to DTO
     private ChallengeResponse mapToResponse(Challenge challenge) {
         ChallengeResponse response = new ChallengeResponse();

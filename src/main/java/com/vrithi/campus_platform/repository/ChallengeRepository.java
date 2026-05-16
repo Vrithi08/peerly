@@ -13,4 +13,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
     List<Challenge> findByCreatedById(Long userId);
     @Query("SELECT c.category, COUNT(c) FROM Challenge c GROUP BY c.category")
     List<Object[]> countByCategory();
+
+    @Query("SELECT c FROM Challenge c LEFT JOIN Submission s ON s.challenge = c GROUP BY c ORDER BY COUNT(s) DESC")
+    List<Challenge> findTrendingChallenges();
 }

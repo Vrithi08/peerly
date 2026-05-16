@@ -15,7 +15,8 @@ import {
   FlatList,
   RefreshControl,
   Modal,
-  Keyboard
+  Keyboard,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -94,6 +95,7 @@ export default function ChallengesPage({ navigation }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [bookmarkedIds, setBookmarkedIds] = useState([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [trendingChallenge, setTrendingChallenge] = useState(null);
   const hasLoaded = useRef(false);
 
   // Animations
@@ -143,9 +145,18 @@ export default function ChallengesPage({ navigation }) {
     try {
       const data = await challengeService.getAll();
       setChallenges(data);
+      
+      // Fetch trending separately so it doesn't block the main list if it fails
+      try {
+        const trending = await challengeService.getTrending();
+        setTrendingChallenge(trending);
+      } catch (trendErr) {
+        console.warn('Trending fetch failed (Backend might need restart):', trendErr);
+      }
+
       Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
     } catch (err) {
-      console.error(err);
+      console.error('Main fetch failed:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -336,21 +347,21 @@ export default function ChallengesPage({ navigation }) {
             </View>
 
             {/* Featured Section */}
-            {challenges.length > 0 && searchQuery === '' && selectedCategory === 'ALL' && (
+            {trendingChallenge && searchQuery === '' && selectedCategory === 'ALL' && (
               <View style={styles.featuredSection}>
                 <Text style={styles.sectionLabel}>FEATURED ARENA</Text>
                 <TouchableOpacity 
                   style={styles.featuredCard}
                   activeOpacity={0.9}
-                  onPress={() => navigation.navigate('ChallengeDetails', { challengeId: challenges[0].id })}
+                  onPress={() => navigation.navigate('ChallengeDetails', { challengeId: trendingChallenge.id })}
                 >
                   <LinearGradient
                     colors={['#1F2937', '#111827']}
                     style={styles.featuredGradient}
                   >
-                    {challenges[0].imageUrl && (
+                    {trendingChallenge.imageUrl && (
                       <Image 
-                        source={{ uri: challenges[0].imageUrl }} 
+                        source={{ uri: trendingChallenge.imageUrl }} 
                         style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} 
                         resizeMode="cover"
                       />
@@ -360,12 +371,12 @@ export default function ChallengesPage({ navigation }) {
                         <Sparkles size={12} color="#F97316" />
                         <Text style={styles.featuredBadgeText}>Trending Now</Text>
                       </View>
-                      <Text style={styles.featuredTitle}>{challenges[0].title}</Text>
-                      <Text style={styles.featuredDesc} numberOfLines={2}>{challenges[0].description}</Text>
+                      <Text style={styles.featuredTitle}>{trendingChallenge.title}</Text>
+                      <Text style={styles.featuredDesc} numberOfLines={2}>{trendingChallenge.description}</Text>
                       <View style={styles.featuredFooter}>
                         <View style={styles.featuredMeta}>
                           <Users size={14} color="rgba(255,255,255,0.6)" />
-                          <Text style={styles.featuredMetaText}>{challenges[0].participantsCount || 0} active peers</Text>
+                          <Text style={styles.featuredMetaText}>{trendingChallenge.participantsCount || 0} active peers</Text>
                         </View>
                         <View style={styles.featuredAction}>
                           <Text style={styles.featuredActionText}>Enter Arena</Text>

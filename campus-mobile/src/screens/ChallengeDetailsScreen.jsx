@@ -45,21 +45,36 @@ import {
   Bot,
   FileText,
   X,
-  Video,
   Music,
   File
 } from 'lucide-react-native';
 import ThemedAlert from '../components/ThemedAlert';
 import AudioPlayer from '../components/AudioPlayer';
-import VideoPlayer from '../components/VideoPlayer';
 
 const { width } = Dimensions.get('window');
 
 // --- Helper: Safe Date Formatter ---
 const formatDate = (dateStr) => {
   if (!dateStr) return 'TBD';
-  const d = new Date(dateStr);
+  const d = new Date(dateStr.toString().replace(' ', 'T'));
   return isNaN(d.getTime()) ? 'TBD' : d.toLocaleDateString();
+};
+
+const getVotingDisplayDate = (challenge) => {
+  if (challenge.votingStartDate && challenge.votingStartDate !== 'TBD') {
+    return formatDate(challenge.votingStartDate);
+  }
+  
+  if (challenge.submissionDeadline) {
+    const d = new Date(challenge.submissionDeadline.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) {
+      const fallback = new Date(d);
+      fallback.setDate(fallback.getDate() + 1);
+      return fallback.toLocaleDateString();
+    }
+  }
+  
+  return 'TBD';
 };
 
 // --- Helper: Category Cover Images ---
@@ -84,13 +99,12 @@ const getPreviewUrl = (sub) => {
 
 // --- Section Header Component (Donut Style) ---
 const SectionHeader = ({ title, highlight }) => (
-  <View style={styles.headerWrapper}>
-    <View style={styles.headerBadge}>
-      <Text style={styles.headerTitleText}>
-        {title} <Text style={styles.headerHighlightText}>{highlight}</Text>
-      </Text>
-    </View>
-    <View style={styles.headerUnderline} />
+  <View style={styles.sectionHeaderMain}>
+    <View style={styles.headerAccent} />
+    <Text style={styles.headerTitleText}>
+      {title} <Text style={styles.headerHighlightText}>{highlight}</Text>
+    </Text>
+    <View style={styles.headerLine} />
   </View>
 );
 
@@ -119,10 +133,47 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     }, [challengeId])
   );
 
+  const updateCountdown = useCallback(() => {
+    if (!challenge) return;
+    const now = new Date().getTime();
+    
+    const deadlineStr = challenge.submissionDeadline;
+    if (!deadlineStr) {
+      setCountdown('--');
+      return;
+    }
+
+    const end = new Date(deadlineStr.replace(' ', 'T')).getTime();
+    if (isNaN(end)) {
+      setCountdown('--');
+      return;
+    }
+    
+    const diff = end - now;
+    if (diff <= 0) { 
+      setCountdown('ENDED'); 
+      return; 
+    }
+    
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    let timeStr = '';
+    if (d > 0) {
+      timeStr = `${d}d ${h}h`;
+    } else {
+      timeStr = `${h}h ${m}m ${s}s`;
+    }
+    setCountdown(timeStr);
+  }, [challenge]);
+
   useEffect(() => {
+    updateCountdown();
     const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
-  }, [challengeId]);
+  }, [updateCountdown]);
 
   const checkBookmarkStatus = async () => {
     try {
@@ -179,41 +230,6 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  const updateCountdown = () => {
-    if (!challenge) return;
-    const now = new Date().getTime();
-    
-    const deadlineStr = challenge.submissionDeadline;
-    if (!deadlineStr) {
-      setCountdown('--');
-      return;
-    }
-
-    const end = new Date(deadlineStr.replace(' ', 'T')).getTime();
-    if (isNaN(end)) {
-      setCountdown('--');
-      return;
-    }
-    
-    const diff = end - now;
-    if (diff <= 0) { 
-      setCountdown('SUBMISSIONS CLOSED'); 
-      return; 
-    }
-    
-    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const s = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    let timeStr = '';
-    if (d > 0) {
-      timeStr = `${d}d ${h}h`;
-    } else {
-      timeStr = `${h}h ${m}m ${s}s`;
-    }
-    setCountdown(timeStr);
-  };
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
@@ -303,16 +319,28 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
             <View style={styles.statsGrid}>
               <View style={[styles.statCard, { backgroundColor: '#F0F9FF' }]}>
                 <View style={styles.statIconBox}><Clock size={20} color="#0EA5E9" /></View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.statLabelText}>Time Left</Text>
-                  <Text style={styles.statValueText}>{countdown.replace('h', ' H').replace('m', ' M').replace('s', ' S')}</Text>
+                  <Text 
+                    style={styles.statValueText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {countdown.replace('h', ' H').replace('m', ' M').replace('s', ' S')}
+                  </Text>
                 </View>
               </View>
               <View style={[styles.statCard, { backgroundColor: '#FFF7ED' }]}>
                 <View style={styles.statIconBox}><Users size={20} color="#F97316" /></View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.statLabelText}>Total Entries</Text>
-                  <Text style={styles.statValueText}>{submissions.length} Warriors</Text>
+                  <Text 
+                    style={styles.statValueText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {submissions.length} Warriors
+                  </Text>
                 </View>
               </View>
             </View>
@@ -337,7 +365,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                 </View>
                 <View style={styles.timelineContent}>
                   <Text style={styles.timelineLabel}>VOTING PHASE STARTS</Text>
-                  <Text style={styles.timelineDate}>{formatDate(challenge.votingStartDate)}</Text>
+                  <Text style={styles.timelineDate}>{getVotingDisplayDate(challenge)}</Text>
                 </View>
               </View>
 
@@ -446,10 +474,6 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                   style={styles.viewerImage} 
                   resizeMode="contain"
                 />
-              ) : (selectedSubmission?.contentType === 'VIDEO' || selectedSubmission?.type?.toUpperCase() === 'VIDEO') && getPreviewUrl(selectedSubmission) ? (
-                <View style={{ marginBottom: 24 }}>
-                  <VideoPlayer url={getPreviewUrl(selectedSubmission)} />
-                </View>
               ) : (selectedSubmission?.contentType === 'AUDIO' || selectedSubmission?.type?.toUpperCase() === 'AUDIO') && getPreviewUrl(selectedSubmission) ? (
                 <View style={{ marginBottom: 24 }}>
                   <AudioPlayer url={getPreviewUrl(selectedSubmission)} />
@@ -546,9 +570,9 @@ const styles = StyleSheet.create({
   descriptionText: { fontSize: 14, color: '#6B7280', lineHeight: 22, marginTop: 20, marginBottom: 24 },
   
   statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 32 },
-  statCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 24 },
-  statIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
-  statLabelText: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
+  statCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 24 },
+  statIconBox: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
+  statLabelText: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
   statValueText: { fontSize: 14, fontWeight: '900', color: '#1F2937', marginTop: 2 },
 
   submissionList: { gap: 12, marginTop: 10 },
@@ -562,11 +586,11 @@ const styles = StyleSheet.create({
   viewActionBtn: { marginLeft: 10 },
   actionCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
 
-  headerWrapper: { marginBottom: 20, alignItems: 'flex-start' },
-  headerBadge: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FED7AA', transform: [{ rotate: '-1.5deg' }], elevation: 3, shadowColor: '#F97316', shadowOpacity: 0.1, shadowRadius: 5 },
-  headerTitleText: { fontSize: 20, fontWeight: '900', color: '#1F2937', letterSpacing: -0.5 },
+  sectionHeaderMain: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 12 },
+  headerAccent: { width: 4, height: 16, backgroundColor: '#F97316', borderRadius: 2, marginRight: 12 },
+  headerTitleText: { fontSize: 13, fontWeight: '900', color: '#1F2937', letterSpacing: 2, textTransform: 'uppercase' },
   headerHighlightText: { color: '#F97316' },
-  headerUnderline: { width: 40, height: 4, backgroundColor: '#F97316', borderRadius: 2, marginTop: 4, marginLeft: 16 },
+  headerLine: { flex: 1, height: 1.5, backgroundColor: '#F97316', marginLeft: 16, opacity: 0.15 },
 
   section: { paddingHorizontal: 20, marginBottom: 30 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },

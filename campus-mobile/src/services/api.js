@@ -101,6 +101,10 @@ export const challengeService = {
     const response = await api.get('/challenges');
     return response.data;
   },
+  getTrending: async () => {
+    const response = await api.get('/challenges/trending');
+    return response.data;
+  },
   getById: async (id) => {
     const response = await api.get(`/challenges/${id}`);
     return response.data;
@@ -156,16 +160,22 @@ export const submissionService = {
       const uriType = uriName.split('.').pop();
       
       const filePayload = {
-        uri: uri,
-        type: data.mimeType || `video/${uriType}` || 'video/mp4',
-        name: data.fileName || uriName || `submission.${uriType}` || 'video.mp4',
+        uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+        type: data.mimeType || 'video/mp4',
+        name: data.fileName || uriName || 'submission.mp4',
       };
 
-      console.log('Final Payload for multipart:', filePayload);
+      console.log('--- Submission Payload ---');
+      console.log('Target URL:', `/submissions/${challengeId}/file`);
+      console.log('File Payload:', filePayload);
+
       formData.append('file', filePayload);
 
       const response = await api.post(`/submissions/${challengeId}/file`, formData, {
-        timeout: 120000 
+        headers: { 
+          'Accept': 'application/json'
+        },
+        timeout: 300000 // 5 minutes for video
       });
       return response.data;
     }

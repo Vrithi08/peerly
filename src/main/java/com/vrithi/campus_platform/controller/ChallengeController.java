@@ -32,6 +32,11 @@ public class ChallengeController {
         return ResponseEntity.ok(challengeService.getAllChallenges());
     }
 
+    @GetMapping("/trending")
+    public ResponseEntity<ChallengeResponse> getTrending() {
+        return ResponseEntity.ok(challengeService.getTrendingChallenge());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ChallengeResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(challengeService.getChallengeById(id));

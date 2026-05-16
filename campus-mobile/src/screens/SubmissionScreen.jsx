@@ -48,9 +48,6 @@ import {
   FileText,
   Music,
   Image as ImageIcon,
-  Video,
-  File,
-  Play,
   EyeOff,
   ChevronRight
 } from 'lucide-react-native';
@@ -211,32 +208,6 @@ export default function SubmissionScreen({ route, navigation }) {
     }
   };
 
-  const pickVideo = async () => {
-    try {
-      console.log('Picking video...');
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'videos',
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      console.log('Video Picker result:', result);
-
-      if (!result.canceled) {
-        const newAssets = result.assets.map(asset => ({
-          id: Math.random().toString(36).substr(2, 9),
-          uri: asset.uri,
-          type: 'video',
-          mimeType: asset.mimeType || 'video/mp4',
-          fileName: asset.fileName || `vid_${Date.now()}.mp4`
-        }));
-        setAttachments([...attachments, ...newAssets].slice(0, 1)); // One video at a time
-      }
-    } catch (err) {
-      console.error('Pick Video Error:', err);
-      showAlert('PICK FAILED', 'Could not access your video vault!', 'error');
-    }
-  };
 
   const pickAudio = async () => {
     try {
@@ -260,27 +231,6 @@ export default function SubmissionScreen({ route, navigation }) {
     }
   };
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-powerpoint', 'text/plain'],
-        multiple: false
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setAttachments([{
-          id: Math.random().toString(36).substr(2, 9),
-          uri: asset.uri,
-          name: asset.name || asset.fileName || 'document.pdf',
-          type: 'document',
-          mimeType: asset.mimeType || 'application/pdf'
-        }]);
-      }
-    } catch (err) {
-      showAlert('PICK FAILED', 'We could not access your document vault. Check permissions!', 'error');
-    }
-  };
 
   const removeAttachment = (id) => {
     setAttachments(attachments.filter(a => a.id !== id));
@@ -404,8 +354,6 @@ export default function SubmissionScreen({ route, navigation }) {
               {[
                 { id: 'text', label: 'Text / Code', icon: FileText },
                 { id: 'image', label: 'Image', icon: ImageIcon },
-                { id: 'video', label: 'Video', icon: Video },
-                { id: 'document', label: 'Document', icon: File },
                 { id: 'audio', label: 'Audio', icon: Music }
               ].map(item => (
                 <TouchableOpacity 
@@ -427,9 +375,7 @@ export default function SubmissionScreen({ route, navigation }) {
             <Animated.View style={[styles.inputWrapper, { opacity: fadeAnim }]}>
               <Text style={styles.inputTitle}>
                 {submissionType === 'text' ? 'Write your solution' : 
-                 submissionType === 'image' ? 'Upload photos' : 
-                 submissionType === 'video' ? 'Upload video' :
-                 submissionType === 'document' ? 'Attach documents' : 'Attach audio'}
+                 submissionType === 'image' ? 'Upload photos' : 'Attach audio'}
               </Text>
               
               {submissionType === 'text' ? (
@@ -464,51 +410,6 @@ export default function SubmissionScreen({ route, navigation }) {
                     )}
                   </ScrollView>
                   <Text style={styles.uploadHelper}>Support JPG, PNG, WEBP (Max 10MB)</Text>
-                </View>
-              ) : submissionType === 'video' ? (
-                <View style={styles.imageSection}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScroll}>
-                    {attachments.map(vid => (
-                      <View key={vid.id} style={styles.imageThumbBox}>
-                        <View style={[styles.imageThumb, { backgroundColor: '#1F2937', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Play size={32} color="#FFF" />
-                        </View>
-                        <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeAttachment(vid.id)}>
-                          <X size={12} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {attachments.length < 1 && (
-                      <TouchableOpacity style={styles.addImgBtn} onPress={pickVideo}>
-                        <Video size={24} color="#9CA3AF" />
-                        <Text style={styles.addImgText}>Add Video</Text>
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
-                  <Text style={styles.uploadHelper}>Support MP4, MOV (Max 50MB)</Text>
-                </View>
-              ) : submissionType === 'document' ? (
-                <View style={styles.imageSection}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScroll}>
-                    {attachments.map(doc => (
-                      <View key={doc.id} style={styles.imageThumbBox}>
-                        <View style={[styles.imageThumb, { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', padding: 10 }]}>
-                          <FileText size={32} color="#F97316" />
-                          <Text style={{ fontSize: 8, color: '#6B7280', marginTop: 4, textAlign: 'center' }} numberOfLines={2}>{doc.name}</Text>
-                        </View>
-                        <TouchableOpacity style={styles.removeImgBtn} onPress={() => removeAttachment(doc.id)}>
-                          <X size={12} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {attachments.length < 1 && (
-                      <TouchableOpacity style={styles.addImgBtn} onPress={pickDocument}>
-                        <File size={24} color="#9CA3AF" />
-                        <Text style={styles.addImgText}>Select File</Text>
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
-                  <Text style={styles.uploadHelper}>Support PDF, DOC, DOCX, TXT (Max 20MB)</Text>
                 </View>
               ) : (
                 <View style={styles.audioSection}>
