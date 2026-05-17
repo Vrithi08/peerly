@@ -393,8 +393,7 @@ const ChallengeDetailsScreen = ({ route, navigation }) => {
                       <Image source={{ uri: getPreviewUrl(sub) }} style={styles.subThumbnail} />
                     ) : (
                       <View style={styles.subThumbPlaceholder}>
-                        {sub.contentType === 'VIDEO' ? <Video size={20} color="#F97316" /> : 
-                         sub.contentType === 'AUDIO' ? <Music size={20} color="#F97316" /> : <FileText size={20} color="#F97316" />}
+                        {sub.contentType === 'AUDIO' ? <Music size={20} color="#F97316" /> : <FileText size={20} color="#F97316" />}
                       </View>
                     )}
                   </View>
